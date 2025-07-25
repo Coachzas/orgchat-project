@@ -4,12 +4,28 @@ import { GET_ALL_CONTACTS } from "@/utils/ApiRoutes";
 import axios from "axios";
 import React, { useEffect, useState } from "react";
 import { BiArrowBack, BiSearchAlt2 } from "react-icons/bi"; // เพิ่มการ import BiSearchAlt2
-import ChatLIstItem from "./ChatLIstItem";
+import ChatListItem from "./ChatListItem";
 
 function ContactsList() {
-  const [allContacts, setAllContacts] = useState([]);
+  const [allContacts, setAllContacts] = useState({});
+  const [searchTerm, setSearchTerm] = useState("");
+  const [searchContacts, setSearchContacts] = useState([]);
   const [{}, dispatch] = useStateProvider();
   
+  useEffect(()=> {
+    if(searchTerm.length) {
+      const filteredData = {};
+      Object.keys(allContacts).forEach((key)=> {
+        filteredData[key] = allContacts[key].filter((obj)=> 
+          obj.name.toLowerCase().includes(searchTerm.toLowerCase())
+      );
+      });
+      setSearchContacts(filteredData);
+    }else {
+      setSearchContacts(allContacts);
+    }
+  },[searchTerm]);
+
   useEffect(() => {
     const getContacts = async () => {
       try {
@@ -17,7 +33,7 @@ function ContactsList() {
           data: { users },
         } = await axios.get(GET_ALL_CONTACTS);
         setAllContacts(users);
-        console.log("📢 All Contacts Loaded:", users);
+        setSearchContacts(users)
       } catch (err) {
         console.log("⚠️ Error fetching contacts:", err);
       }
@@ -47,27 +63,32 @@ function ContactsList() {
                 type="text"
                 placeholder="Search Contacts"
                 className="bg-transparent text-sm focus:outline-none text-white"
+                value={searchTerm}
+                onChange={(e)=> setSearchTerm(e.target.value)}
               />
             </div>
           </div>
         </div>
                
-        {
-          Object.entries(allContacts).map(([initialLetter, userList]) => (
-            <div key={Date.now() + initialLetter}>
-              <div className="text-teal-light pl-10 py-5">{initialLetter}</div>
-              {
-                userList.map((contact) => (
-                  <ChatLIstItem
-                    data={contact}
-                    isContactPage={true}
-                    key={contact.id}
-                  />
-                ))
-              }
-            </div>
-          ))
-        }
+        {Object.entries(searchContacts).map(([initialLetter, userList]) => {
+  if (userList.length > 0) {
+    return (
+      <div key={Date.now() + initialLetter}>
+        <div className="text-teal-light pl-10 py-5">{initialLetter}</div>
+        {userList.map((contact) => (
+          <ChatListItem
+            data={contact}
+            isContactsPage={true}
+            key={contact.id}
+          />
+        ))}
+      </div>
+    );
+  } else {
+    return null;
+  }
+})}
+
       </div>
     </div>
   );

@@ -8,23 +8,48 @@ datasource db {
 }
 
 model User {
-  id               Int      @id @default(autoincrement())
-  about            String   @default("")
-  email            String   @unique
+  id               Int           @id @default(autoincrement())
+  about            String        @default("")
+  email            String        @unique
+  password         String
   name             String
-  profilePicture   String   @default("")
-  sentMessages     Message[] @relation("sentMessages")
-  receivedMessages Message[] @relation("receivedMessages")
+  profilePicture   String        @default("")
+
+  sentMessages     Message[]     @relation("sentMessages")
+  receivedMessages Message[]     @relation("receivedMessages")
+
+  groupMembers     GroupMember[]
 }
 
 model Message {
-  id            Int      @id @default(autoincrement())
-  sender        User     @relation("sentMessages", fields: [senderId], references: [id])
+  id            Int       @id @default(autoincrement())
+  sender        User      @relation("sentMessages", fields: [senderId], references: [id])
   senderId      Int
-  receiver      User     @relation("receivedMessages", fields: [receiverId], references: [id])
-  receiverId    Int
-  type          String   @default("text")
+
+  receiver      User?     @relation("receivedMessages", fields: [receiverId], references: [id])
+  receiverId    Int?
+
+  group         Group?    @relation(fields: [groupId], references: [id])
+  groupId       Int?
+
+  type          String    @default("text")
   message       String
-  messageStatus String   @default("sent")
-  createdAt     DateTime @default(now())
+  messageStatus String    @default("sent")
+  createdAt     DateTime  @default(now())
+}
+
+model Group {
+  id         Int            @id @default(autoincrement())
+  name       String
+  members    GroupMember[]
+  messages   Message[]
+  createdAt  DateTime       @default(now())
+}
+
+model GroupMember {
+  id       Int    @id @default(autoincrement())
+  user     User   @relation(fields: [userId], references: [id])
+  userId   Int
+  group    Group  @relation(fields: [groupId], references: [id])
+  groupId  Int
 }

@@ -67,8 +67,8 @@ function login() { // ✅ แก้ชื่อฟังก์ชันเป็
   return (
     <div className="flex justify-center items-center bg-panel-header-background h-screen w-screen flex-col gap-6">
       <div className="flex items-center justify-center gap-2 text-white">
-        <img src="Whatsapp.gif" alt="Whatsapp" height={300} width={300} />
-        <span className="text-7xl">Whatsapp</span>
+        <img src="orgchat.png" alt="OrgChat" height={300} width={300} />
+        <span className="text-7xl">OrgChat</span>
       </div>
       <button
         className="flex items-center gap-7 bg-search-input-container-background p-5 rounded-lg"

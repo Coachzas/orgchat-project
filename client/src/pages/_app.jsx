@@ -7,8 +7,8 @@ export default function App({ Component, pageProps }) {
   return (
     <StateProvider initialState={initialState} reducer={reducer}>
       <Head>
-        <title>Whatsapp</title>
-        <link rel="shortcut icon" href="/favicon.png" />
+        <title>OrgChat</title>
+        <link rel="shortcut icon" href="/orgchat.png" />
       </Head>
       <Component {...pageProps} />
     </StateProvider>

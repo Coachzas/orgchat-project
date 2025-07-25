@@ -3,6 +3,10 @@ import { useStateProvider } from "@/context/StateContext";
 import MessageStatus from "../common/MessageStatus";
 import { calculateTime } from "@/utils/CalculateTime";
 import ImageMessage from "./ImageMessage"; // ✅ Import คอมโพเนนต์ ImageMessage 
+import dynamic from "next/dynamic";
+import FileMessage from "./FileMessage"; 
+
+const VoiceMessage = dynamic(() => import("./VoiceMessage"), { ssr: false });
 
 function ChatContainer() {
   const [{ messages, currentChatUser, userInfo }] = useStateProvider();
@@ -50,6 +54,10 @@ function ChatContainer() {
 
                 {/* ✅ แสดงรูปภาพถ้าเป็นข้อความประเภท image */}
                 {message.type === "image" && <ImageMessage message={message} />}
+                {message.type === "audio" && <VoiceMessage message={message} />}
+                {message.type === "file" && (
+                  <FileMessage message={message} isOwnMessage={message.senderId === userInfo?.id} />
+                )}
               </div>
             ))
           ) : (
