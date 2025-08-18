@@ -6,7 +6,6 @@ import path from "path";
 
 const router = express.Router();
 
-// 📁 ตั้งค่าเก็บไฟล์
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
     const dir = "uploads/files/";
@@ -21,7 +20,6 @@ const storage = multer.diskStorage({
 
 const upload = multer({ storage });
 
-// ✅ อัปโหลดไฟล์ทั่วไป (pdf, zip, docx, etc.)
 router.post("/upload", upload.single("file"), (req, res) => {
   const { from, to } = req.body;
   const fileUrl = `/uploads/files/${req.file.filename}`;

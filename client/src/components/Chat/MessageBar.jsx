@@ -167,7 +167,7 @@ function MessageBar() {
           <div className="w-full rounded-lg h-10 flex items-center">
             <input
               type="text"
-              placeholder="Type a message"
+              placeholder="พิมพ์ข้อความ"
               className="bg-input-background text-sm text-white h-10 rounded-lg px-5 py-4 w-full"
               value={message}
               onChange={(e) => setMessage(e.target.value)}

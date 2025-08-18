@@ -19,10 +19,10 @@ function SearchBar() {
         <div>
           <input
             type="text"
-            placeholder="Search or start a new chat"
+            placeholder="ค้นหาหรือเริ่มแชทใหม่"
             className="bg-transparent text-sm focus:outline-none text-white"
             value={contactSearch}
-            aria-label="Search or start a new chat"
+            aria-label="ค้นหาหรือเริ่มแชทใหม่"
             onChange={(e) =>
               dispatch({
                 type: reducerCases.SET_CONTACT_SEARCH,

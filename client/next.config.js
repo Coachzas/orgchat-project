@@ -6,7 +6,13 @@ const nextConfig = {
     NEXT_PUBLIC_ZEGO_SERVER_ID: "fd5f8007cdc0e6697f603cc600eac7e4",
   },
   images: {
-    domains: ["localhost"],
+    remotePatterns: [
+      {
+        protocol: "http",
+        hostname: "localhost",
+        port: "3005", 
+      },
+    ],
   },
 };
 

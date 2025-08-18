@@ -1,11 +1,16 @@
 import { Router } from "express";
-import { checkUser, generateToken, getAllUsers, onBoardUser } from "../controllers/AuthController.js"
-
+import {
+  registerUser,
+  loginUser,
+  getAllUsers,
+  generateToken,
+} from "../controllers/AuthController.js";
 
 const router = Router();
 
-router.post("/check-user", checkUser);
-router.post("/onboard-user", onBoardUser);
+router.post("/register", registerUser); 
+router.post("/login", loginUser);
 router.get("/get-contacts", getAllUsers);
-router.get("/generate-token/:userId",generateToken)
+router.get("/generate-token/:userId", generateToken);
+
 export default router;

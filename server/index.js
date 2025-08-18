@@ -37,16 +37,16 @@ io.on("connection", (socket) => {
 
   socket.on("add-user", (userId) => {
     onlineUsers.set(userId, socket.id);
-    console.log(`✅ User connected: ${userId}`);
+    console.log(`✅ ผู้ใช้ที่เชื่อมต่อ:${userId}`);
     socket.broadcast.emit("online-users", {
       onlineUsers: Array.from(onlineUsers.keys()),
     });
   });
 
-  // ✅ แก้พิมพ์ผิดจาก "singout" => "signout"
+  
   socket.on("signout", (id) => {
     onlineUsers.delete(id);
-    console.log(`❌ User signed out: ${id}`);
+    console.log(`❌ ผู้ใช้ออกจากระบบ: ${id}`);
     socket.broadcast.emit("online-users", {
       onlineUsers: Array.from(onlineUsers.keys()),
     });
@@ -56,7 +56,7 @@ io.on("connection", (socket) => {
   const sendUserSocket = onlineUsers.get(data.to);
   if (sendUserSocket) {
     const message = {
-      id: Date.now(), // หรือจะใช้ uuid ก็ได้
+      id: Date.now(), 
       senderId: data.from,
       receiverId: data.to,
       message: data.message,

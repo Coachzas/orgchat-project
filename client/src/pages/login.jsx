@@ -1,84 +1,86 @@
-import { reducerCases } from "@/context/constants";
-import { useStateProvider } from "@/context/StateContext";
-import { CHECK_USER_ROUTE } from "@/utils/ApiRoutes";
-import { firebaseAuth } from "@/utils/FirebaseConfig";
+import React, { useState } from "react";
+import { useRouter } from "next/router"; 
 import axios from "axios";
-import { GoogleAuthProvider, signInWithPopup } from "firebase/auth";
-import { useRouter } from "next/router";
-import React, { useEffect } from "react";
-import { FcGoogle } from "react-icons/fc";
+import { LOGIN_ROUTE } from "@/utils/ApiRoutes";
+import { useStateProvider } from "@/context/StateContext";
+import { reducerCases } from "@/context/constants";
+import Input from "@/components/common/Input";
+import Image from "next/image";
 
-function login() { // ✅ แก้ชื่อฟังก์ชันเป็นตัวใหญ่
+function Login() {
   const router = useRouter();
-  const [{ userInfo, newUser }, dispatch] = useStateProvider();
-
-  useEffect(() => {
-    if (userInfo?.id && !newUser) {
-      try {
-        router.push("/");
-      } catch (err) {
-        console.error("Navigation error:", err);
-      }
-    }
-  }, [userInfo, newUser]);
+  const [, dispatch] = useStateProvider();
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [errorMsg, setErrorMsg] = useState("");
+  const [loading, setLoading] = useState(false);
 
   const handleLogin = async () => {
+    setErrorMsg("");
+    const emailLower = (email || "").trim().toLowerCase(); 
+    if (!emailLower || !password) {
+      setErrorMsg("กรุณากรอกอีเมลและรหัสผ่าน");
+      return;
+    }
+
     try {
-      const provider = new GoogleAuthProvider();
-      const {
-        user: { displayName: name, email, photoURL: profileImage },
-      } = await signInWithPopup(firebaseAuth, provider);
+      setLoading(true);
+      const { data } = await axios.post(LOGIN_ROUTE, { email: emailLower, password });
 
-      if (email) {
-        const { data } = await axios.post(CHECK_USER_ROUTE, { email });
-
-        if (!data.status) {
-          dispatch({ type: reducerCases.SET_NEW_USER, newUser: true });
-          dispatch({
-            type: reducerCases.SET_USER_INFO,
-            userInfo: {
-              name,
-              email,
-              profileImage,
-              status: "",
-            },
-          });
-          router.push("/onboarding");
-        } else {
-          const { id, name, email, profilePicture: profileImage, status } = data.data;
-          dispatch({
-            type: reducerCases.SET_USER_INFO,
-            userInfo: {
-              id,
-              name,
-              email,
-              profileImage,
-              status,
-            },
-          });
-          router.push("/");
-        }
+      if (data.status) {
+        dispatch({
+          type: reducerCases.SET_USER_INFO,
+          userInfo: {
+            id: data.user.id,
+            firstName: data.user.firstName,
+            lastName: data.user.lastName,
+            email: data.user.email,
+            profilePicture: data.user.profilePicture,
+            about: data.user.about,
+          },
+        });
+        router.push("/"); // ไปหน้าหลักหลังเข้าสู่ระบบ
+      } else {
+        setErrorMsg(data.msg || "การเข้าสู่ระบบล้มเหลว");
       }
-    } catch (err) {
-      console.error("Login error:", err);
+    } catch (error) {
+      setErrorMsg(error.response?.data?.msg || error.message || "การเข้าสู่ระบบล้มเหลว โปรดตรวจสอบข้อมูลของคุณ");
+    } finally {
+      setLoading(false);
     }
   };
 
   return (
-    <div className="flex justify-center items-center bg-panel-header-background h-screen w-screen flex-col gap-6">
-      <div className="flex items-center justify-center gap-2 text-white">
-        <img src="orgchat.png" alt="OrgChat" height={300} width={300} />
-        <span className="text-7xl">OrgChat</span>
+    <div className="bg-panel-header-background h-screen w-screen text-white flex flex-col items-center justify-center gap-6">
+      <div className="flex items-center justify-center gap-4">
+        <Image src="/orgchat.png" alt="OrgChat" width={80} height={80} />
+        <h1 className="text-4xl font-bold">OrgChat</h1>
       </div>
-      <button
-        className="flex items-center gap-7 bg-search-input-container-background p-5 rounded-lg"
-        onClick={handleLogin}
-      >
-        <FcGoogle className="text-4xl" />
-        <span className="text-white text-2xl">Login with Google</span>
-      </button>
+
+      <h2 className="text-xl">ลงชื่อเข้าใช้บัญชีของคุณ</h2>
+
+      <div className="flex flex-col gap-4 w-80">
+        <Input name="อีเมล" state={email} setState={(val) => setEmail(val.toLowerCase())} type="email" label />
+        <Input name="รหัสผ่าน" state={password} setState={setPassword} type="password" label />
+        {errorMsg && <span className="text-red-500 text-sm">{errorMsg}</span>}
+
+        <button
+          className="bg-search-input-container-background text-white py-2 px-4 rounded-lg disabled:opacity-60"
+          onClick={handleLogin}
+          disabled={loading}
+        >
+          {loading ? "กำลังเข้าสู่ระบบ..." : "เข้าสู่ระบบ"}
+        </button>
+
+        <span className="text-sm text-gray-400">
+          ยังไม่มีบัญชีใช่ไหม?{" "}
+          <span onClick={() => router.push("/register")} className="text-blue-500 cursor-pointer">
+            ลงทะเบียน
+          </span>
+        </span>
+      </div>
     </div>
   );
 }
 
-export default login; // ✅ แก้เป็นตัวใหญ่เพื่อให้ Next.js จัดการ Component ได้ถูกต้อง
+export default Login;

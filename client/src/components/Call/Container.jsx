@@ -168,11 +168,11 @@ await zg.loginRoom(
   return (
     <div className="border-conversation-border border-l w-full bg-conversation-panel-background flex flex-col h-[100vh] overflow-hidden items-center justify-center text-white">
       <div className="flex flex-col gap-3 items-center">
-        <span className="text-5xl">{data.name}</span>
+        <span className="text-5xl">{`${data.firstName} ${data.lastName}`}</span>
         <span className="text-lg">
           {callAccepted && data.callType !== "video"
-            ? "On going call"
-            : "Calling"}
+            ? "กำลังโทรอยู่"
+            : "กำลังรอสาย"}
         </span>
       </div>
       {(!callAccepted || data.callType === "audio") && (
