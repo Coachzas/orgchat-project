@@ -49,7 +49,7 @@ function ContactsList() {
             className="cursor-pointer text-xl"
             onClick={() => dispatch({ type: reducerCases.SET_ALL_CONTACTS_PAGE })}
           />
-          <span>New Chat</span>
+          <span>แชทใหม่</span>
         </div>
       </div>
       <div className="bg-search-input-container-background h-full flex-auto overflow-auto custom-scrollbar">

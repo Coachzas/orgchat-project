@@ -12,7 +12,6 @@ import ContextMenu from "../common/ContextMenu";
 function ChatHeader() {
   const [{ currentChatUser, onlineUsers }, dispatch] = useStateProvider();
 
-  // ✅ ใช้ชื่อตัวแปรที่สะกดถูก
   const [contextMenuCoordinates, setContextMenuCoordinates] = useState({
     x: 0,
     y: 0,
@@ -67,11 +66,13 @@ function ChatHeader() {
       <div className="flex items-center justify-center gap-6">
         <Avatar type="sm" image={currentChatUser?.profilePicture} />
         <div className="flex flex-col">
-          <span className="text-primary-strong">{currentChatUser?.name}</span>
+          <span className="text-primary-strong">
+            {currentChatUser?.firstName} {currentChatUser?.lastName}
+          </span>
           <span className="text-secondary text-sm">
 
               {
-                onlineUsers.includes(currentChatUser.id) ? "online" : "offline"
+                onlineUsers.includes(currentChatUser.id) ? "ออนไลน์" : "offline"
               }
 
           </span>

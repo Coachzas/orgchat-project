@@ -1,7 +1,5 @@
 import { reducerCases } from "@/context/constants";
 import { useStateProvider } from "@/context/StateContext";
-import { firebaseAuth } from "@/utils/FirebaseConfig";
-import { signOut } from "firebase/auth";
 import { useRouter } from "next/router";
 import { useEffect } from "react";
 
@@ -15,12 +13,16 @@ function LogoutPage() {
         if (socket?.current && userInfo?.id) {
           socket.current.emit("signout", userInfo.id);
         }
-        dispatch({ type: reducerCases.SET_USER_INFO, userInfo: undefined });
-        await signOut(firebaseAuth);
+        // เคลียร์ข้อมูลผู้ใช้ออกจาก context
+        dispatch({ type: reducerCases.SET_USER_INFO, userInfo: null });
+
+        // หากมี token หรือข้อมูล session ใน localStorage ก็ลบทิ้งได้ด้วย
+        localStorage.removeItem("authToken"); // ถ้ามีใช้
+        localStorage.removeItem("userInfo");  // ถ้าเคยเก็บไว้
       } catch (error) {
         console.error("❌ Logout error:", error);
       } finally {
-        // ✅ ตรวจว่าไม่ได้อยู่ที่ /login แล้วค่อย push
+        // ย้ายไปหน้า login
         if (router.pathname !== "/login") {
           router.push("/login");
         }

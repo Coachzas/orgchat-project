@@ -47,7 +47,7 @@ function SearchMessages() {
           className="cursor-pointer text-icon-lighter text-2xl"
           onClick={() => dispatch({ type: reducerCases.SET_MESSAGE_SEARCH })}
         />
-        <span>Search Messages</span>
+        <span>ค้นหาข้อความ</span>
       </div>
 
       {/* Search input */}
@@ -56,7 +56,7 @@ function SearchMessages() {
           <BiSearchAlt2 className="text-panel-header-icon cursor-pointer text-xl" />
           <input
             type="text"
-            placeholder="Search Messages"
+            placeholder="ค้นหาข้อความ"
             className="bg-transparent text-sm focus:outline-none text-white w-full"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
@@ -67,14 +67,14 @@ function SearchMessages() {
       {/* No input hint */}
       {!searchTerm.length && (
         <span className="mt-10 text-secondary px-5">
-          Search for messages with <strong>{currentChatUser?.name}</strong>
+          ค้นหาข้อความด้วย... <strong>{currentChatUser?.name}</strong>
         </span>
       )}
 
       {/* Search results */}
       <div className="flex-1 overflow-auto custom-scrollbar px-5 mt-4">
         {searchTerm.length > 0 && searchedMessages.length === 0 && (
-          <div className="text-secondary text-center">No messages found</div>
+          <div className="text-secondary text-center">ไม่พบข้อความ</div>
         )}
         {searchedMessages.map((message) => (
           <div

@@ -39,25 +39,33 @@ function ChatListHeader() {
 
   return (
     <div className="h-16 px-4 py-3 flex justify-between items-center">
-      <div className="cursor-pointer">
+      <div className="flex items-center gap-4 flex-grow">
         <Avatar
           type="sm"
-          image={userInfo?.profileImage || "/default-profile.png"}
+          image={userInfo?.profilePicture || "/default-profile.png"}
         />
+        <div className="flex flex-col overflow-hidden">
+          <span className="text-primary-strong text-sm font-semibold truncate">
+            {userInfo?.firstName} {userInfo?.lastName}
+          </span>
+          <span className="text-secondary text-xs truncate">
+            {userInfo?.about}
+          </span>
+        </div>
       </div>
       <div className="flex gap-6">
         <BsFillChatLeftTextFill
           className="text-panel-header-icon cursor-pointer text-xl"
-          title="New Chat"
+          title="แชทใหม่"
           onClick={handleAllContactsPage}
         />
         <FiUsers
           className="text-panel-header-icon cursor-pointer text-xl"
           title="Group Chat"
           onClick={() => {
-          dispatch({ type: reducerCases.SET_ALL_CONTACTS_PAGE, payload: false });
-          dispatch({ type: reducerCases.SET_GROUPS_PAGE, payload: true });
-        }}
+            dispatch({ type: reducerCases.SET_ALL_CONTACTS_PAGE, payload: false });
+            dispatch({ type: reducerCases.SET_GROUPS_PAGE, payload: true });
+          }}
         />
         <BsThreeDotsVertical
           className="text-panel-header-icon cursor-pointer text-xl"

@@ -55,7 +55,7 @@ function Avatar({ type, image, setImage }) {
     {
       name: "Remove Photo",
       callback: () => {
-        setImage("/default_avatar.png"); // รีเซ็ตรูปภาพกลับไปยังค่าเริ่มต้น
+        setImage("/default-avatar.png"); // รีเซ็ตรูปภาพกลับไปยังค่าเริ่มต้น
       },
     },
   ];
