@@ -29,7 +29,7 @@ Calling: ZegoCloud (App ID / Server Secret สำหรับออกโทเ�
 - DATABASE_URL="postgresql://postgres:<PASSWORD>@localhost:5432/whatsapp?schema=public"
 - PORT=3005
 # ZegoCloud (ฝั่งเซิร์ฟเวอร์ใช้สำหรับออกโทเค็น)
-- ZEGO_APP_ID="1814050585" # ตัวเลข App ID
+- ZEGO_APP_ID="1818181818" # ตัวเลข App ID
 - ZEGO_SERVER_SECRET="<your_server_secret>"
 # (ถ้าใช้ JWT)
 - JWT_SECRET="<your_jwt_secret>"
@@ -48,7 +48,7 @@ Calling: ZegoCloud (App ID / Server Secret สำหรับออกโทเ�
   
 **ตัวอย่างไฟล์ .env.local**
 - NEXT_PUBLIC_SERVER_URL="http://localhost:3005"
-- NEXT_PUBLIC_ZEGO_APP_ID="1814050585"
+- NEXT_PUBLIC_ZEGO_APP_ID="1818181818"
 # สำหรับฝั่ง client บางโปรเจกต์ใช้ SERVER_ID หรือคีย์สาธารณะ
 - NEXT_PUBLIC_ZEGO_SERVER_ID="<public_or_temp_key_if_used>"
 
