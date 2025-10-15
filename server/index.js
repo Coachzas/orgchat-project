@@ -1,5 +1,5 @@
 // index.js
-// 🔹 ไฟล์หลักสำหรับรัน server OrgChat (รองรับ group chat แล้ว)
+// 🔹 ไฟล์หลักสำหรับรัน server OrgChat (รองรับ group chat, voice/video call, และ realtime แล้ว)
 
 import express from "express";
 import dotenv from "dotenv";
@@ -17,12 +17,10 @@ import { Server } from "socket.io";
 dotenv.config();
 const app = express();
 
-// =========================
 // 🔧 Middleware
-// =========================
 app.use(
   cors({
-    origin: "http://localhost:3005",
+    origin: "http://localhost:3000",
     credentials: true,
   })
 );
@@ -48,28 +46,24 @@ app.use("/uploads/images/", express.static("uploads/images"));
 app.use("/uploads/audios/", express.static("uploads/audios"));
 app.use("/uploads/files/", express.static("uploads/files"));
 
-// =========================
 // 🔹 Routes
-// =========================
 app.use("/api/auth", AuthRoutes);
 app.use("/api/messages", MessageRoutes);
 app.use("/api/files", FileRoutes);
 app.use("/api/groups", GroupRoutes);
 
-// =========================
 // 🚀 Start Server
-// =========================
 const PORT = process.env.PORT || 3005;
 const server = app.listen(PORT, () => {
   console.log(`🚀 Server รันที่ http://localhost:${PORT}`);
 });
 
-// =========================
 // 🔌 Socket.io Setup
-// =========================
 const io = new Server(server, {
-  cors: { origin: "http://localhost:3005", credentials: true },
+  cors: { origin: "http://localhost:3000", credentials: true },
 });
+
+app.set("io", io);
 
 global.onlineUsers = new Map();
 
@@ -95,40 +89,42 @@ io.on("connection", (socket) => {
     });
   });
 
-  // 💬 ส่งข้อความส่วนตัว
+  // 💬 ส่งข้อความส่วนตัว (1-1)
   socket.on("send-msg", (data) => {
     const sendUserSocket = onlineUsers.get(data.to);
+
+    const message = {
+      id: Date.now(),
+      senderId: data.from,
+      receiverId: data.to,
+      message: data.message,
+      type: data.type,
+      createdAt: new Date().toISOString(),
+      messageStatus: "delivered",
+    };
+
+    // ✅ ถ้ามี socket ของผู้รับ — ส่งให้ผู้รับ
     if (sendUserSocket) {
-      const message = {
-        id: Date.now(),
-        senderId: data.from,
-        receiverId: data.to,
-        message: data.message,
-        type: data.type,
-        createdAt: new Date().toISOString(),
-        messageStatus: "delivered",
-      };
       socket.to(sendUserSocket).emit("msg-receive", { message });
     }
+
+    // ✅ ส่งกลับให้ผู้ส่งด้วย — เพื่อให้ขึ้นทันทีโดยไม่ต้องรีเฟรช
+    socket.emit("msg-receive", { message });
   });
 
-  // =========================
   // 📢 ส่วนของ Group Chat
-  // =========================
-
   // 🧩 เมื่อผู้ใช้เข้าห้องกลุ่ม
   socket.on("join-group", (groupId) => {
     socket.join(`group_${groupId}`);
     console.log(`👥 ผู้ใช้ ${socket.id} เข้าห้อง group_${groupId}`);
   });
 
-  // 📨 ส่งข้อความในกลุ่ม
+  // 📨 ส่งข้อความในกลุ่ม (เรียลไทม์ทั้งผู้ส่งและผู้รับ)
   socket.on("group-message-send", (data) => {
     const { groupId, from, message, type } = data;
     console.log(`📨 ข้อความใหม่ใน group_${groupId} จาก user ${from}: ${message}`);
 
-    // Broadcast ข้อความให้สมาชิกในห้อง (ยกเว้นคนส่ง)
-    socket.to(`group_${groupId}`).emit("group-message-receive", {
+    const msgData = {
       message: {
         id: Date.now(),
         senderId: from,
@@ -138,12 +134,16 @@ io.on("connection", (socket) => {
         createdAt: new Date().toISOString(),
         messageStatus: "delivered",
       },
-    });
+    };
+
+    // ส่งให้สมาชิกในห้อง (ยกเว้นคนส่ง)
+    socket.to(`group_${groupId}`).emit("group-message-receive", msgData);
+
+    // ส่งกลับให้คนส่งด้วย (เพื่อให้ขึ้นทันที)
+    socket.emit("group-message-receive", msgData);
   });
 
-  // =========================
   // 📞 Voice & Video Calls
-  // =========================
 
   // 📞 Voice Call
   socket.on("outgoing-voice-call", (data) => {

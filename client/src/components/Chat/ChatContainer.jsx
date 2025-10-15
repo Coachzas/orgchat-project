@@ -6,19 +6,23 @@ import ImageMessage from "./ImageMessage";
 import dynamic from "next/dynamic";
 import FileMessage from "./FileMessage";
 import axios from "axios";
-import { GET_GROUP_MESSAGES_ROUTE } from "@/utils/ApiRoutes";
+import {
+  GET_GROUP_MESSAGES_ROUTE,
+  GET_MESSAGES_ROUTE,
+} from "@/utils/ApiRoutes";
 import { reducerCases } from "@/context/constants";
 
 const VoiceMessage = dynamic(() => import("./VoiceMessage"), { ssr: false });
 
 function ChatContainer() {
-  // ✅ ดึงข้อมูลจาก Context รวมถึง socket
-  const [{ messages, currentChatUser, currentGroup, userInfo, socket }, dispatch] =
-    useStateProvider();
+  const [
+    { messages, currentChatUser, currentGroup, userInfo, socket },
+    dispatch,
+  ] = useStateProvider();
 
   const [loading, setLoading] = useState(false);
 
-  // ✅ โหลดข้อความของกลุ่มจากฐานข้อมูลเมื่อเปลี่ยนกลุ่ม
+  // ✅ โหลดข้อความของ "กลุ่ม" จากฐานข้อมูลเมื่อเปลี่ยนกลุ่ม
   useEffect(() => {
     const fetchGroupMessages = async () => {
       if (!currentGroup) return;
@@ -38,33 +42,72 @@ function ChatContainer() {
     fetchGroupMessages();
   }, [currentGroup, dispatch]);
 
-  // ✅ ฟังข้อความใหม่จาก socket (real-time)
+  // ✅ โหลดข้อความของ "แชท 1-1" จากฐานข้อมูลเมื่อเปลี่ยนผู้สนทนา
+  useEffect(() => {
+    const fetchPrivateMessages = async () => {
+      if (!currentChatUser) return;
+      setLoading(true);
+      try {
+        const res = await axios.get(
+          `${GET_MESSAGES_ROUTE}/${userInfo.id}/${currentChatUser.id}`
+        );
+        dispatch({ type: reducerCases.SET_MESSAGES, messages: res.data });
+      } catch (err) {
+        console.error("❌ โหลดข้อความ 1-1 ล้มเหลว:", err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchPrivateMessages();
+  }, [currentChatUser, dispatch, userInfo]);
+
+  // ✅ ฟังข้อความใหม่จาก socket (แชทกลุ่ม)
   useEffect(() => {
     if (!currentGroup) return;
     if (!socket) return;
 
-    // 🧩 ประกาศฟังก์ชันฟัง event ก่อน
     const handleGroupMessageReceive = (data) => {
-      // ✅ ตรวจว่าเป็นข้อความของกลุ่มปัจจุบันหรือไม่
       if (data.message.groupId === currentGroup.id) {
-        console.log("📩 ข้อความใหม่ในกลุ่ม (socket):", data.message);
+        console.log("📩 ข้อความใหม่ในกลุ่ม:", data.message);
+        dispatch({
+          type: reducerCases.ADD_MESSAGE,
+          newMessage: data.message,
+        });
+      }
+    };
+
+    socket.on("group-message-receive", handleGroupMessageReceive);
+    return () => {
+      socket.off("group-message-receive", handleGroupMessageReceive);
+    };
+  }, [socket, currentGroup, dispatch]);
+
+  // ✅ ฟังข้อความใหม่จาก socket (แชท 1-1)
+  useEffect(() => {
+    if (!socket) return;
+
+    const handlePrivateMessageReceive = (data) => {
+      // ตรวจว่าข้อความเกี่ยวข้องกับเราหรือไม่
+      if (
+        data.message.receiverId === userInfo?.id ||
+        data.message.senderId === currentChatUser?.id
+      ) {
+        console.log("💬 ข้อความใหม่ (1-1):", data.message);
         dispatch({
           type: reducerCases.ADD_MESSAGE,
           newMessage: data.message,
         });
       } else {
-        console.log("⚠️ ข้ามข้อความของกลุ่มอื่น:", data.message.groupId);
+        console.log("⚠️ ข้ามข้อความของคนอื่น:", data.message);
       }
     };
 
-    // ✅ เริ่มฟัง event
-    socket.on("group-message-receive", handleGroupMessageReceive);
-
-    // ✅ ล้าง event listener เมื่อ component ถูก unmount หรือเปลี่ยนกลุ่ม
+    socket.on("msg-receive", handlePrivateMessageReceive);
     return () => {
-      socket.off("group-message-receive", handleGroupMessageReceive);
+      socket.off("msg-receive", handlePrivateMessageReceive);
     };
-  }, [socket, currentGroup, dispatch]);
+  }, [socket, currentChatUser, dispatch, userInfo]);
 
   return (
     <div className="h-[80vh] w-full relative flex-grow overflow-auto custom-scrollbar">
@@ -85,11 +128,10 @@ function ChatContainer() {
                   >
                     {message.type === "text" && (
                       <div
-                        className={`text-white px-2 py-[5px] text-sm rounded-md flex gap-2 items-end max-w-[45%] ${
-                          isOwn
+                        className={`text-white px-2 py-[5px] text-sm rounded-md flex gap-2 items-end max-w-[45%] ${isOwn
                             ? "bg-outgoing-background"
                             : "bg-incoming-background"
-                        }`}
+                          }`}
                       >
                         <span className="break-all">{message?.message}</span>
                         <div className="flex gap-1 items-end">
@@ -107,8 +149,12 @@ function ChatContainer() {
                       </div>
                     )}
 
-                    {message.type === "image" && <ImageMessage message={message} />}
-                    {message.type === "audio" && <VoiceMessage message={message} />}
+                    {message.type === "image" && (
+                      <ImageMessage message={message} />
+                    )}
+                    {message.type === "audio" && (
+                      <VoiceMessage message={message} />
+                    )}
                     {message.type === "file" && (
                       <FileMessage message={message} isOwnMessage={isOwn} />
                     )}

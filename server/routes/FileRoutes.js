@@ -20,11 +20,13 @@ const storage = multer.diskStorage({
 
 const upload = multer({ storage });
 
-/* =========================
-   📌 Upload File + Emit Realtime
-   ========================= */
+
+   //📌 Upload File + Emit Realtime
 router.post("/upload", upload.single("file"), async (req, res) => {
   try {
+        console.log("📩 รับ request upload เข้ามาแล้ว");
+    console.log("req.body:", req.body);
+    console.log("req.file:", req.file);
     const { from, to, groupId } = req.body;
 
     if (!req.file || !from || (!to && !groupId)) {
@@ -49,6 +51,8 @@ router.post("/upload", upload.single("file"), async (req, res) => {
       },
     });
 
+    console.log("✅ บันทึก DB สำเร็จ:", newMessage);
+
     // ✅ ทำ absolute url สำหรับส่งกลับ
     const staticUrl = `${req.protocol}://${req.get("host")}`;
     const responseMessage = {
@@ -56,9 +60,7 @@ router.post("/upload", upload.single("file"), async (req, res) => {
       absoluteUrl: `${staticUrl}${newMessage.fileUrl}`,
     };
 
-    // =========================
     // 📡 Emit Realtime via Socket.io
-    // =========================
     const io = req.app.get("io");
 
     if (to) {

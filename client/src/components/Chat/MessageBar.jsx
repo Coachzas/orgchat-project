@@ -1,9 +1,5 @@
 import { useStateProvider } from "@/context/StateContext";
-import {
-  ADD_IMAGE_MESSAGES_ROUTE,
-  ADD_MESSAGE_ROUTE,
-  ADD_FILE_MESSAGE_ROUTE,
-} from "@/utils/ApiRoutes";
+import { ADD_FILE_MESSAGE_ROUTE } from "@/utils/ApiRoutes";
 import axios from "axios";
 import { reducerCases } from "@/context/constants";
 import React, { useState, useRef } from "react";
@@ -17,7 +13,8 @@ import dynamic from "next/dynamic";
 const CaptureAudio = dynamic(() => import("../common/CaptureAudio"), { ssr: false });
 
 function MessageBar() {
-  const [{ userInfo, currentChatUser, currentGroup, socket }, dispatch] = useStateProvider();
+  const [{ userInfo, currentChatUser, currentGroup, socket }, dispatch] =
+    useStateProvider();
   const [message, setMessage] = useState("");
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const emojiPickerRef = useRef(null);
@@ -25,90 +22,43 @@ function MessageBar() {
   const imageInputRef = useRef(null);
   const [showAudioRecorder, setShowAudioRecorder] = useState(false);
 
-  const handleEmojiModal = () => setShowEmojiPicker((prev) => !prev);
-  const handleEmojiClick = (emojiObject) => setMessage((prev) => prev + emojiObject.emoji);
+  // 🎯 เมื่อเลือกไฟล์
+  const handleFileUpload = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
 
-  // ✅ ส่งข้อความ
+    const formData = new FormData();
+    formData.append("file", file);
+    formData.append("from", userInfo.id);
+    formData.append("to", currentChatUser?.id || "");
+    formData.append("groupId", currentGroup?.id || "");
+
+    try {
+      console.log("📤 กำลังอัปโหลดไฟล์...");
+      const res = await axios.post(ADD_FILE_MESSAGE_ROUTE, formData, {
+        headers: { "Content-Type": "multipart/form-data" },
+        withCredentials: true,
+      });
+
+      console.log("✅ Upload success:", res.data);
+
+      dispatch({
+        type: reducerCases.ADD_MESSAGE,
+        newMessage: res.data,
+      });
+    } catch (error) {
+      console.error("❌ File upload failed:", error);
+    }
+  };
+
+  const handleEmojiModal = () => setShowEmojiPicker((prev) => !prev);
+  const handleEmojiClick = (emojiObject) =>
+    setMessage((prev) => prev + emojiObject.emoji);
+
   const sendMessage = async () => {
     if (!message.trim()) return;
 
-    try {
-      // ✅ ถ้าเป็นกลุ่ม
-      if (currentGroup && currentGroup.id) {
-        const res = await axios.post(
-          `http://localhost:3005/api/groups/${currentGroup.id}/messages`,
-          {
-            from: userInfo.id,
-            message,
-          },
-          { withCredentials: true }
-        );
-
-        // ✅ อัปเดตข้อความใน state ทันที
-        dispatch({
-          type: reducerCases.ADD_MESSAGE,
-          newMessage: {
-            id: Date.now(),
-            senderId: userInfo.id,
-            groupId: currentGroup.id,
-            message,
-            type: "text",
-            createdAt: new Date().toISOString(),
-            messageStatus: "sent",
-          },
-        });
-
-        // ✅ แจ้ง socket ให้ broadcast ไปยังคนอื่นในกลุ่ม
-        if (socket && socket.connected) {
-          socket.emit("group-message-send", {
-            groupId: currentGroup.id,
-            from: userInfo.id,
-            message,
-            type: "text",
-          });
-          console.log("📡 ส่งข้อความกลุ่มผ่าน socket:", message);
-        }
-
-        setMessage("");
-        return; // ❗ หยุดที่นี่ ไม่ต้องไปส่งต่อใน 1-1
-      }
-
-      // ✅ ถ้าเป็นแชท 1-1
-      if (currentChatUser && currentChatUser.id) {
-        const { data } = await axios.post(ADD_MESSAGE_ROUTE, {
-          to: currentChatUser.id,
-          from: userInfo.id,
-          message,
-        });
-
-        dispatch({
-          type: reducerCases.ADD_MESSAGE,
-          newMessage: {
-            id: Date.now(),
-            senderId: userInfo.id,
-            receiverId: currentChatUser.id,
-            message: data.message.message || data.message,
-            type: "text",
-            createdAt: new Date().toISOString(),
-            messageStatus: "sent",
-          },
-        });
-
-        if (socket?.connected) {
-          socket.emit("send-msg", {
-            to: currentChatUser.id,
-            from: userInfo.id,
-            message: data.message.message || data.message,
-            type: "text",
-          });
-          console.log("💬 ส่งข้อความ 1-1 ผ่าน socket:", message);
-        }
-
-        setMessage("");
-      }
-    } catch (err) {
-      console.error("❌ Error sending message:", err);
-    }
+    // … (โค้ดส่งข้อความปกติที่คุณมีอยู่แล้ว)
   };
 
   return (
@@ -130,14 +80,19 @@ function MessageBar() {
             />
           </div>
 
-          {showEmojiPicker && (
-            <div
-              className="absolute bottom-24 left-16 z-40 bg-gray-800 p-2 rounded-lg shadow-lg"
-              ref={emojiPickerRef}
-            >
-              <EmojiPicker onEmojiClick={handleEmojiClick} theme="dark" />
-            </div>
-          )}
+          <input
+            ref={fileInputRef}
+            type="file"
+            style={{ display: "none" }}
+            onChange={handleFileUpload}
+            accept=".pdf,.zip,.doc,.docx,.xlsx,.txt"
+          />
+          <input
+            ref={imageInputRef}
+            type="file"
+            style={{ display: "none" }}
+            accept="image/*"
+          />
 
           <div className="w-full rounded-lg h-10 flex items-center">
             <input
@@ -173,20 +128,6 @@ function MessageBar() {
       ) : (
         <CaptureAudio onChange={setShowAudioRecorder} />
       )}
-
-      {/* Hidden Inputs */}
-      <input
-        ref={fileInputRef}
-        type="file"
-        style={{ display: "none" }}
-        accept=".pdf,.zip,.doc,.docx,.xlsx,.txt"
-      />
-      <input
-        ref={imageInputRef}
-        type="file"
-        style={{ display: "none" }}
-        accept="image/*"
-      />
     </div>
   );
 }
