@@ -1,0 +1,47 @@
+import { reducerCases } from "@/context/constants";
+import { useStateProvider } from "@/context/StateContext";
+import React from "react";
+import { BiSearchAlt2 } from "react-icons/bi";
+import { BsFilter } from "react-icons/bs";
+
+function SearchBar() {
+  const [{ contactSearch }, dispatch] = useStateProvider();
+
+  return (
+    <div className="bg-search-input-container-background flex py-3 pl-5 items-center">
+      <div className="bg-panel-header-background flex items-center gap-5 px-5 py-3">
+        <div>
+          <BiSearchAlt2
+            className="text-panel-header-icon cursor-pointer text-xl"
+            aria-hidden="true"
+          />
+        </div>
+        <div>
+          <input
+            type="text"
+            placeholder="ค้นหาหรือเริ่มแชทใหม่"
+            className="bg-transparent text-sm focus:outline-none text-white"
+            value={contactSearch}
+            aria-label="ค้นหาหรือเริ่มแชทใหม่"
+            onChange={(e) =>
+              dispatch({
+                type: reducerCases.SET_CONTACT_SEARCH,
+                contactSearch: e.target.value,
+              })
+            }
+          />
+        </div>
+      </div>
+      <div className="pr-5 pl-3">
+        <BsFilter
+          className="text-panel-header-icon cursor-pointer text-lg"
+          aria-label="Filter contacts"
+          role="button"
+          tabIndex={0}
+        />
+      </div>
+    </div>
+  );
+}
+
+export default SearchBar;

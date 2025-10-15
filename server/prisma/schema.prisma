@@ -1,0 +1,78 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum MessageType {
+  text
+  image
+  audio
+  video
+  file
+}
+
+enum MessageStatus {
+  sent
+  delivered
+  read
+}
+
+model User {
+  id               Int           @id @default(autoincrement())
+  firstName        String
+  lastName         String
+  about            String        @default("")
+  email            String        @unique
+  password         String
+  profilePicture   String        @default("")
+  role             String        @default("user")
+  sentMessages     Message[]     @relation("sentMessages")
+  receivedMessages Message[]     @relation("receivedMessages")
+  groupMembers     GroupMember[]
+}
+
+model Message {
+  id            Int           @id @default(autoincrement())
+  sender        User          @relation("sentMessages", fields: [senderId], references: [id])
+  senderId      Int
+  receiver      User?         @relation("receivedMessages", fields: [receiverId], references: [id])
+  receiverId    Int?
+  group         Group?        @relation(fields: [groupId], references: [id])
+  groupId       Int?
+
+  type          MessageType   @default(text)
+
+  // ข้อความธรรมดา (optional เผื่อเป็นข้อความเปล่า/ไฟล์อย่างเดียว)
+  message       String?
+  fileUrl       String?
+  fileName      String?
+  mimeType      String?
+  fileSize      Int?
+
+  messageStatus MessageStatus @default(sent)
+  createdAt     DateTime      @default(now())
+
+  @@index([senderId, receiverId, groupId, createdAt])
+  @@index([createdAt])
+}
+
+model Group {
+  id         Int            @id @default(autoincrement())
+  name       String
+  about      String? 
+  members    GroupMember[]
+  messages   Message[]
+  createdAt  DateTime       @default(now())
+}
+
+model GroupMember {
+  id       Int    @id @default(autoincrement())
+  user     User   @relation(fields: [userId], references: [id])
+  userId   Int
+  group    Group  @relation(fields: [groupId], references: [id])
+  groupId  Int
+}
