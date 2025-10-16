@@ -1,14 +1,20 @@
+// ✅ MessageBar.jsx (ครบทุกประเภทและแก้ปัญหา null click แล้ว)
 import { useStateProvider } from "@/context/StateContext";
-import { ADD_FILE_MESSAGE_ROUTE } from "@/utils/ApiRoutes";
+import {
+  ADD_FILE_MESSAGE_ROUTE,
+  ADD_IMAGE_MESSAGES_ROUTE,
+  ADD_MESSAGE_ROUTE,
+  ADD_AUDIO_MESSAGES_ROUTE,
+} from "@/utils/ApiRoutes";
 import axios from "axios";
-import { reducerCases } from "@/context/constants";
-import React, { useState, useRef } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import { BsEmojiSmile } from "react-icons/bs";
 import { ImAttachment } from "react-icons/im";
 import { MdSend } from "react-icons/md";
 import { FaMicrophone, FaImage } from "react-icons/fa";
 import EmojiPicker from "emoji-picker-react";
 import dynamic from "next/dynamic";
+import { reducerCases } from "@/context/constants";
 
 const CaptureAudio = dynamic(() => import("../common/CaptureAudio"), { ssr: false });
 
@@ -22,7 +28,97 @@ function MessageBar() {
   const imageInputRef = useRef(null);
   const [showAudioRecorder, setShowAudioRecorder] = useState(false);
 
-  // 🎯 เมื่อเลือกไฟล์
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (emojiPickerRef.current && !emojiPickerRef.current.contains(e.target)) {
+        setShowEmojiPicker(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  // ✅ ส่งข้อความ text หรือ emoji
+  const sendMessage = async () => {
+    if (!message.trim()) return;
+    try {
+      const res = await axios.post(
+        ADD_MESSAGE_ROUTE,
+        {
+          from: userInfo.id,
+          to: currentChatUser?.id || "",
+          groupId: currentGroup?.id || "",
+          message,
+        },
+        { withCredentials: true }
+      );
+
+      const newMessage = {
+        ...res.data,
+        senderId: userInfo.id,
+        message,
+        type: "text",
+        createdAt: new Date().toISOString(),
+      };
+
+      dispatch({ type: reducerCases.ADD_MESSAGE, newMessage });
+
+      if (socket) {
+        socket.emit(
+          currentGroup ? "group-message-send" : "send-msg",
+          currentGroup
+            ? { from: userInfo.id, message, type: "text", groupId: currentGroup.id }
+            : { from: userInfo.id, message, type: "text", to: currentChatUser?.id }
+        );
+      }
+
+      setMessage("");
+    } catch (error) {
+      console.error("❌ Text send failed:", error);
+    }
+  };
+
+  // ✅ ส่งรูปภาพ (แสดงทันที)
+  const handleImageUpload = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    const formData = new FormData();
+    formData.append("image", file);
+    formData.append("from", userInfo.id);
+    formData.append("to", currentChatUser?.id || "");
+    formData.append("groupId", currentGroup?.id || "");
+
+    try {
+      const res = await axios.post(ADD_IMAGE_MESSAGES_ROUTE, formData, {
+        headers: { "Content-Type": "multipart/form-data" },
+        withCredentials: true,
+      });
+
+      const newMessage = {
+        ...res.data,
+        senderId: userInfo.id,
+        type: "image",
+        message: URL.createObjectURL(file),
+        createdAt: new Date().toISOString(),
+      };
+
+      dispatch({ type: reducerCases.ADD_MESSAGE, newMessage });
+
+      if (socket) {
+        socket.emit(
+          currentGroup ? "group-message-send" : "send-msg",
+          currentGroup
+            ? { from: userInfo.id, message: newMessage.message, type: "image", groupId: currentGroup.id }
+            : { from: userInfo.id, message: newMessage.message, type: "image", to: currentChatUser?.id }
+        );
+      }
+    } catch (error) {
+      console.error("❌ Image upload failed:", error);
+    }
+  };
+
+  // ✅ ส่งไฟล์เอกสาร (พร้อมป้องกัน click null)
   const handleFileUpload = async (e) => {
     const file = e.target.files[0];
     if (!file) return;
@@ -34,64 +130,110 @@ function MessageBar() {
     formData.append("groupId", currentGroup?.id || "");
 
     try {
-      console.log("📤 กำลังอัปโหลดไฟล์...");
       const res = await axios.post(ADD_FILE_MESSAGE_ROUTE, formData, {
         headers: { "Content-Type": "multipart/form-data" },
         withCredentials: true,
       });
 
-      console.log("✅ Upload success:", res.data);
+      const newMessage = {
+        ...res.data,
+        senderId: userInfo.id,
+        type: "file",
+        fileName: file.name,
+        createdAt: new Date().toISOString(),
+      };
 
-      dispatch({
-        type: reducerCases.ADD_MESSAGE,
-        newMessage: res.data,
-      });
+      dispatch({ type: reducerCases.ADD_MESSAGE, newMessage });
+
+      if (socket) {
+        socket.emit(
+          currentGroup ? "group-message-send" : "send-msg",
+          currentGroup
+            ? { from: userInfo.id, message: newMessage.message, type: "file", groupId: currentGroup.id }
+            : { from: userInfo.id, message: newMessage.message, type: "file", to: currentChatUser?.id }
+        );
+      }
     } catch (error) {
       console.error("❌ File upload failed:", error);
     }
   };
 
-  const handleEmojiModal = () => setShowEmojiPicker((prev) => !prev);
-  const handleEmojiClick = (emojiObject) =>
-    setMessage((prev) => prev + emojiObject.emoji);
+  // ✅ ส่งเสียง
+  const handleAudioUpload = async (audioBlob) => {
+    const file = new File([audioBlob], "audio.mp3", { type: "audio/mpeg" });
+    const formData = new FormData();
+    formData.append("audio", file);
+    formData.append("from", userInfo.id);
+    formData.append("to", currentChatUser?.id || "");
+    formData.append("groupId", currentGroup?.id || "");
 
-  const sendMessage = async () => {
-    if (!message.trim()) return;
+    try {
+      const res = await axios.post(ADD_AUDIO_MESSAGES_ROUTE, formData, {
+        headers: { "Content-Type": "multipart/form-data" },
+        withCredentials: true,
+      });
+      const newMessage = { ...res.data, senderId: userInfo.id, type: "audio" };
+      dispatch({ type: reducerCases.ADD_MESSAGE, newMessage });
 
-    // … (โค้ดส่งข้อความปกติที่คุณมีอยู่แล้ว)
+      if (socket) {
+        socket.emit(
+          currentGroup ? "group-message-send" : "send-msg",
+          currentGroup
+            ? { from: userInfo.id, message: newMessage.message, type: "audio", groupId: currentGroup.id }
+            : { from: userInfo.id, message: newMessage.message, type: "audio", to: currentChatUser?.id }
+        );
+      }
+    } catch (error) {
+      console.error("❌ Audio upload failed:", error);
+    }
   };
 
   return (
     <div className="bg-panel-header-background h-20 px-4 flex items-center gap-6 relative">
       {!showAudioRecorder ? (
         <>
-          <div className="flex gap-4 items-center">
+          <div className="flex gap-4 items-center relative">
             <BsEmojiSmile
               className="text-panel-header-icon text-xl cursor-pointer"
-              onClick={handleEmojiModal}
+              onClick={() => setShowEmojiPicker((prev) => !prev)}
             />
+            {showEmojiPicker && (
+              <div ref={emojiPickerRef} className="absolute bottom-12 left-0 z-50">
+                <EmojiPicker
+                  onEmojiClick={(e) => setMessage((prev) => prev + e.emoji)}
+                  theme="dark"
+                  emojiStyle="google"
+                />
+              </div>
+            )}
             <FaImage
               className="text-panel-header-icon text-xl cursor-pointer"
-              onClick={() => imageInputRef.current.click()}
+              onClick={() => {
+                if (imageInputRef.current) imageInputRef.current.click();
+              }}
             />
             <ImAttachment
               className="text-panel-header-icon text-xl cursor-pointer"
-              onClick={() => fileInputRef.current.click()}
+              onClick={() => {
+                if (fileInputRef.current) fileInputRef.current.click();
+              }}
             />
           </div>
 
+          {/* ✅ Hidden inputs */}
           <input
             ref={fileInputRef}
             type="file"
             style={{ display: "none" }}
-            onChange={handleFileUpload}
             accept=".pdf,.zip,.doc,.docx,.xlsx,.txt"
+            onChange={handleFileUpload}
           />
           <input
             ref={imageInputRef}
             type="file"
             style={{ display: "none" }}
             accept="image/*"
+            onChange={handleImageUpload}
           />
 
           <div className="w-full rounded-lg h-10 flex items-center">
@@ -99,7 +241,7 @@ function MessageBar() {
               type="text"
               placeholder={
                 currentGroup
-                  ? `ส่งข้อความใน "${currentGroup.name}"...`
+                  ? `ส่งข้อความใน \"${currentGroup.name}\"...`
                   : currentChatUser
                   ? `พิมพ์ข้อความถึง ${currentChatUser.firstName}...`
                   : "พิมพ์ข้อความ..."
@@ -126,7 +268,13 @@ function MessageBar() {
           </div>
         </>
       ) : (
-        <CaptureAudio onChange={setShowAudioRecorder} />
+        <CaptureAudio
+          onStop={(audioBlob) => {
+            handleAudioUpload(audioBlob);
+            setShowAudioRecorder(false);
+          }}
+          onChange={() => setShowAudioRecorder(false)}
+        />
       )}
     </div>
   );

@@ -22,7 +22,14 @@ function ChatContainer() {
 
   const [loading, setLoading] = useState(false);
 
-  // ✅ โหลดข้อความของ "กลุ่ม" จากฐานข้อมูลเมื่อเปลี่ยนกลุ่ม
+  // เข้าห้องกลุ่มเมื่อ currentGroup เปลี่ยน
+  useEffect(() => {
+    if (socket && currentGroup) {
+      socket.emit("join-group", currentGroup.id);
+    }
+  }, [socket, currentGroup]);
+
+  // โหลดข้อความกลุ่มจากฐานข้อมูล
   useEffect(() => {
     const fetchGroupMessages = async () => {
       if (!currentGroup) return;
@@ -42,7 +49,7 @@ function ChatContainer() {
     fetchGroupMessages();
   }, [currentGroup, dispatch]);
 
-  // ✅ โหลดข้อความของ "แชท 1-1" จากฐานข้อมูลเมื่อเปลี่ยนผู้สนทนา
+  // โหลดข้อความ 1-1 จากฐานข้อมูล
   useEffect(() => {
     const fetchPrivateMessages = async () => {
       if (!currentChatUser) return;
@@ -62,57 +69,52 @@ function ChatContainer() {
     fetchPrivateMessages();
   }, [currentChatUser, dispatch, userInfo]);
 
-  // ✅ ฟังข้อความใหม่จาก socket (แชทกลุ่ม)
+  // ฟังข้อความกลุ่มแบบเรียลไทม์
   useEffect(() => {
-    if (!currentGroup) return;
     if (!socket) return;
 
     const handleGroupMessageReceive = (data) => {
-      if (data.message.groupId === currentGroup.id) {
-        console.log("📩 ข้อความใหม่ในกลุ่ม:", data.message);
+      const { message } = data;
+      if (
+        message?.groupId === currentGroup?.id &&
+        message?.senderId !== userInfo?.id
+      ) {
         dispatch({
           type: reducerCases.ADD_MESSAGE,
-          newMessage: data.message,
+          newMessage: message,
         });
       }
     };
 
     socket.on("group-message-receive", handleGroupMessageReceive);
-    return () => {
-      socket.off("group-message-receive", handleGroupMessageReceive);
-    };
-  }, [socket, currentGroup, dispatch]);
+    return () => socket.off("group-message-receive", handleGroupMessageReceive);
+  }, [socket, currentGroup, dispatch, userInfo]);
 
-  // ✅ ฟังข้อความใหม่จาก socket (แชท 1-1)
+  // ฟังข้อความ 1-1 แบบเรียลไทม์
   useEffect(() => {
     if (!socket) return;
 
     const handlePrivateMessageReceive = (data) => {
-      // ตรวจว่าข้อความเกี่ยวข้องกับเราหรือไม่
+      const { message } = data;
       if (
-        data.message.receiverId === userInfo?.id ||
-        data.message.senderId === currentChatUser?.id
+        (message.receiverId === userInfo?.id ||
+          message.senderId === userInfo?.id) &&
+        message.senderId !== userInfo?.id // ✅ ป้องกัน dispatch ซ้ำจาก sender
       ) {
-        console.log("💬 ข้อความใหม่ (1-1):", data.message);
         dispatch({
           type: reducerCases.ADD_MESSAGE,
-          newMessage: data.message,
+          newMessage: message,
         });
-      } else {
-        console.log("⚠️ ข้ามข้อความของคนอื่น:", data.message);
       }
     };
 
     socket.on("msg-receive", handlePrivateMessageReceive);
-    return () => {
-      socket.off("msg-receive", handlePrivateMessageReceive);
-    };
+    return () => socket.off("msg-receive", handlePrivateMessageReceive);
   }, [socket, currentChatUser, dispatch, userInfo]);
 
   return (
     <div className="h-[80vh] w-full relative flex-grow overflow-auto custom-scrollbar">
       <div className="bg-chat-background bg-fixed h-full w-full opacity-5 fixed left-0 top-0 z-0"></div>
-
       <div className="mx-10 my-6 relative bottom-0 z-40 left-0">
         {loading ? (
           <p className="text-gray-400 text-center">กำลังโหลดข้อความ...</p>
@@ -128,10 +130,11 @@ function ChatContainer() {
                   >
                     {message.type === "text" && (
                       <div
-                        className={`text-white px-2 py-[5px] text-sm rounded-md flex gap-2 items-end max-w-[45%] ${isOwn
+                        className={`text-white px-2 py-[5px] text-sm rounded-md flex gap-2 items-end max-w-[45%] ${
+                          isOwn
                             ? "bg-outgoing-background"
                             : "bg-incoming-background"
-                          }`}
+                        }`}
                       >
                         <span className="break-all">{message?.message}</span>
                         <div className="flex gap-1 items-end">

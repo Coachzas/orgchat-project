@@ -5,6 +5,8 @@ import MessageStatus from "../common/MessageStatus";
 function FileMessage({ message, isOwnMessage }) {
   const { fileUrl, fileName, createdAt, messageStatus, absoluteUrl } = message;
 
+  if (!fileUrl || !fileName) return null;
+
   // ✅ ใช้ absoluteUrl ถ้ามี, ถ้าไม่มีใช้ NEXT_PUBLIC_STATIC_URL + fileUrl
   const url = absoluteUrl || `${process.env.NEXT_PUBLIC_STATIC_URL}${fileUrl}`;
 
