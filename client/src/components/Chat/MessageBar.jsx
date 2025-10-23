@@ -1,4 +1,4 @@
-// ✅ MessageBar.jsx (ครบทุกประเภทและแก้ปัญหา null click แล้ว)
+// ✅ MessageBar.jsx (เวอร์ชันแก้แล้ว ใช้ socket.current ทุกจุด)
 import { useStateProvider } from "@/context/StateContext";
 import {
   ADD_FILE_MESSAGE_ROUTE,
@@ -63,8 +63,8 @@ function MessageBar() {
 
       dispatch({ type: reducerCases.ADD_MESSAGE, newMessage });
 
-      if (socket) {
-        socket.emit(
+      if (socket?.current) {
+        socket.current.emit(
           currentGroup ? "group-message-send" : "send-msg",
           currentGroup
             ? { from: userInfo.id, message, type: "text", groupId: currentGroup.id }
@@ -78,7 +78,7 @@ function MessageBar() {
     }
   };
 
-  // ✅ ส่งรูปภาพ (แสดงทันที)
+  // ✅ ส่งรูปภาพ
   const handleImageUpload = async (e) => {
     const file = e.target.files[0];
     if (!file) return;
@@ -105,8 +105,8 @@ function MessageBar() {
 
       dispatch({ type: reducerCases.ADD_MESSAGE, newMessage });
 
-      if (socket) {
-        socket.emit(
+      if (socket?.current) {
+        socket.current.emit(
           currentGroup ? "group-message-send" : "send-msg",
           currentGroup
             ? { from: userInfo.id, message: newMessage.message, type: "image", groupId: currentGroup.id }
@@ -118,7 +118,7 @@ function MessageBar() {
     }
   };
 
-  // ✅ ส่งไฟล์เอกสาร (พร้อมป้องกัน click null)
+  // ✅ ส่งไฟล์เอกสาร
   const handleFileUpload = async (e) => {
     const file = e.target.files[0];
     if (!file) return;
@@ -145,8 +145,8 @@ function MessageBar() {
 
       dispatch({ type: reducerCases.ADD_MESSAGE, newMessage });
 
-      if (socket) {
-        socket.emit(
+      if (socket?.current) {
+        socket.current.emit(
           currentGroup ? "group-message-send" : "send-msg",
           currentGroup
             ? { from: userInfo.id, message: newMessage.message, type: "file", groupId: currentGroup.id }
@@ -175,8 +175,8 @@ function MessageBar() {
       const newMessage = { ...res.data, senderId: userInfo.id, type: "audio" };
       dispatch({ type: reducerCases.ADD_MESSAGE, newMessage });
 
-      if (socket) {
-        socket.emit(
+      if (socket?.current) {
+        socket.current.emit(
           currentGroup ? "group-message-send" : "send-msg",
           currentGroup
             ? { from: userInfo.id, message: newMessage.message, type: "audio", groupId: currentGroup.id }
@@ -208,15 +208,11 @@ function MessageBar() {
             )}
             <FaImage
               className="text-panel-header-icon text-xl cursor-pointer"
-              onClick={() => {
-                if (imageInputRef.current) imageInputRef.current.click();
-              }}
+              onClick={() => imageInputRef.current?.click()}
             />
             <ImAttachment
               className="text-panel-header-icon text-xl cursor-pointer"
-              onClick={() => {
-                if (fileInputRef.current) fileInputRef.current.click();
-              }}
+              onClick={() => fileInputRef.current?.click()}
             />
           </div>
 

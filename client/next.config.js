@@ -2,8 +2,8 @@
 const nextConfig = {
   reactStrictMode: false,
   env: {
-    NEXT_PUBLIC_ZEGO_APP_ID: "1814050585",
-    NEXT_PUBLIC_ZEGO_SERVER_ID: "fd5f8007cdc0e6697f603cc600eac7e4",
+    NEXT_PUBLIC_ZEGO_APP_ID: "433408785",
+    ZEGO_SERVER_SECRET: "69db67b09cde911902a303e5a2a2a6fd",
   },
   images: {
     remotePatterns: [

@@ -34,7 +34,7 @@ app.use(
     resave: false,
     saveUninitialized: false,
     cookie: {
-      secure: false, // ❗ true ถ้าใช้ https
+      secure: false, // ✅ true ถ้าใช้ https
       httpOnly: true,
       maxAge: 1000 * 60 * 60 * 24, // 1 วัน
     },
@@ -143,17 +143,23 @@ io.on("connection", (socket) => {
     socket.emit("group-message-receive", msgData);
   });
 
-  // 📞 Voice & Video Calls
+  // 🔊 Voice & Video Calls
+  // -----------------------------------------------
 
-  // 📞 Voice Call
   socket.on("outgoing-voice-call", (data) => {
     const sendUserSocket = onlineUsers.get(data.to);
+    console.log("📞 Caller:", data.from.id, "→ Receiver:", data.to);
+    console.log("🧭 Online users map:", Array.from(onlineUsers.entries()));
     if (sendUserSocket) {
-      socket.to(sendUserSocket).emit("incoming-voice-call", {
+      io.to(sendUserSocket).emit("incoming-voice-call", {
+        id: data.from.id,
         from: data.from,
-        roomId: data.roomId,
         callType: data.callType,
+        roomId: data.roomId,
       });
+      console.log("📞 ส่งสัญญาณ incoming-voice-call ไปยัง:", data.to);
+    } else {
+      console.log("⚠️ ไม่พบ socket ของผู้รับ:", data.to);
     }
   });
 
@@ -161,28 +167,38 @@ io.on("connection", (socket) => {
   socket.on("outgoing-video-call", (data) => {
     const sendUserSocket = onlineUsers.get(data.to);
     if (sendUserSocket) {
-      socket.to(sendUserSocket).emit("incoming-video-call", {
+      io.to(sendUserSocket).emit("incoming-video-call", {
+        id: data.from.id,
         from: data.from,
         roomId: data.roomId,
         callType: data.callType,
       });
+      console.log("🎥 ส่งสัญญาณ incoming-video-call ไปยัง:", data.to);
+    } else {
+      console.log("⚠️ No socket found for receiver", data.to);
     }
   });
 
-  // ❌ ปฏิเสธการโทร
-  socket.on("reject-voice-call", (data) => {
+  // ❌ ปฏิเสธการโทร (ใช้ชื่อ unified: reject-call)
+  socket.on("reject-call", (data) => {
     const sendUserSocket = onlineUsers.get(data.from);
-    if (sendUserSocket) socket.to(sendUserSocket).emit("voice-call-rejected");
+    if (sendUserSocket) {
+      socket.to(sendUserSocket).emit("reject-call");
+      console.log("📴 ส่ง reject-call กลับไปยัง:", data.from);
+    }
   });
 
-  socket.on("reject-video-call", (data) => {
-    const sendUserSocket = onlineUsers.get(data.from);
-    if (sendUserSocket) socket.to(sendUserSocket).emit("video-call-rejected");
-  });
-
-  // ✅ รับสายเรียกเข้า
-  socket.on("accept-incoming-call", ({ id }) => {
+  // ✅ รับสายเรียกเข้า (พร้อมส่ง roomId กลับไปยัง caller)
+  socket.on("accept-incoming-call", ({ id, roomId }) => {
     const sendUserSocket = onlineUsers.get(id);
-    if (sendUserSocket) socket.to(sendUserSocket).emit("accept-call");
+    console.log("📩 [Server] รับ event accept-incoming-call จาก:", socket.id);
+    console.log("↩️ ส่งต่อ event accept-call ไปหา caller:", id, "roomId:", roomId);
+
+    if (sendUserSocket) {
+      socket.to(sendUserSocket).emit("accept-call", { roomId });
+      console.log("📲 ผู้รับสายตอบรับ call:", id, "roomId:", roomId);
+    } else {
+      console.log("⚠️ [Server] ไม่พบ socket ของ caller:", id);
+    }
   });
 });

@@ -7,13 +7,15 @@ export const initialState = {
   contactsPage: false,
   groupsPage: false,
   currentChatUser: undefined,
-  currentGroup: undefined, // ✅ เพิ่ม field นี้ให้ state เก็บกลุ่มปัจจุบันได้
+  currentGroup: undefined, // ✅ state สำหรับเก็บกลุ่มปัจจุบัน
+
   messages: [],
   socket: undefined,
   messagesSearch: false,
   userContacts: [],
   onlineUsers: [],
   filteredContacts: [],
+
   videoCall: undefined,
   voiceCall: undefined,
   incomingVoiceCall: undefined,
@@ -47,26 +49,17 @@ const reducer = (state, action) => {
       };
 
     case reducerCases.SET_MESSAGE_SEARCH:
-      return {
-        ...state,
-        messagesSearch: !state.messagesSearch,
-      };
+      return { ...state, messagesSearch: !state.messagesSearch };
 
     case reducerCases.SET_USER_CONTACTS:
-      return {
-        ...state,
-        userContacts: action.userContacts,
-      };
+      return { ...state, userContacts: action.userContacts };
 
     case reducerCases.SET_ONLINE_USERS:
-      return {
-        ...state,
-        onlineUsers: action.onlineUsers,
-      };
+      return { ...state, onlineUsers: action.onlineUsers };
 
     case reducerCases.SET_CONTACT_SEARCH: {
       const filteredContacts = state.userContacts.filter((contact) =>
-        (`${contact.firstName} ${contact.lastName}`)
+        `${contact.firstName} ${contact.lastName}`
           .toLowerCase()
           .includes(action.contactSearch.toLowerCase())
       );
@@ -78,28 +71,16 @@ const reducer = (state, action) => {
     }
 
     case reducerCases.SET_VIDEO_CALL:
-      return {
-        ...state,
-        videoCall: action.videoCall,
-      };
+      return { ...state, videoCall: action.videoCall };
 
     case reducerCases.SET_VOICE_CALL:
-      return {
-        ...state,
-        voiceCall: action.voiceCall,
-      };
+      return { ...state, voiceCall: action.voiceCall };
 
     case reducerCases.SET_INCOMING_VOICE_CALL:
-      return {
-        ...state,
-        incomingVoiceCall: action.incomingVoiceCall,
-      };
+      return { ...state, incomingVoiceCall: action.incomingVoiceCall };
 
     case reducerCases.SET_INCOMING_VIDEO_CALL:
-      return {
-        ...state,
-        incomingVideoCall: action.incomingVideoCall,
-      };
+      return { ...state, incomingVideoCall: action.incomingVideoCall };
 
     case reducerCases.END_CALL:
       return {
@@ -111,19 +92,13 @@ const reducer = (state, action) => {
       };
 
     case reducerCases.SET_EXIT_CHAT:
-      return {
-        ...state,
-        currentChatUser: undefined,
-      };
+      return { ...state, currentChatUser: undefined };
 
     case reducerCases.SET_GROUPS_PAGE:
       console.log("📂 Changing groupsPage to:", action.payload);
-      return {
-        ...state,
-        groupsPage: action.payload,
-      };
+      return { ...state, groupsPage: action.payload };
 
-    // ✅ เพิ่มเคสใหม่สำหรับการตั้งค่ากลุ่มปัจจุบัน
+    // ✅ เคสใหม่สำหรับตั้งค่ากลุ่มปัจจุบัน
     case reducerCases.SET_CURRENT_GROUP:
       console.log("🟢 SET_CURRENT_GROUP called:", action.group);
       return {

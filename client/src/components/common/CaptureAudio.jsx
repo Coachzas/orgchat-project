@@ -150,7 +150,7 @@ function CaptureAudio({ onChange }) {
           },
         });
 
-        socket?.emit("send-msg", {
+        socket?.current.emit("send-msg", {
           to: currentChatUser.id,
           from: userInfo.id,
           message: audioUrl,
