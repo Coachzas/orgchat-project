@@ -11,6 +11,7 @@ import AuthRoutes from "./routes/AuthRoutes.js";
 import MessageRoutes from "./routes/MessageRoutes.js";
 import FileRoutes from "./routes/FileRoutes.js";
 import GroupRoutes from "./routes/GroupRoutes.js";
+import AdminRoutes from "./routes/AdminRoutes.js";
 
 import { Server } from "socket.io";
 
@@ -36,6 +37,7 @@ app.use(
     cookie: {
       secure: false, // ✅ true ถ้าใช้ https
       httpOnly: true,
+      sameSite: "lax",
       maxAge: 1000 * 60 * 60 * 24, // 1 วัน
     },
   })
@@ -51,6 +53,7 @@ app.use("/api/auth", AuthRoutes);
 app.use("/api/messages", MessageRoutes);
 app.use("/api/files", FileRoutes);
 app.use("/api/groups", GroupRoutes);
+app.use("/api/admin", AdminRoutes);
 
 // 🚀 Start Server
 const PORT = process.env.PORT || 3005;
