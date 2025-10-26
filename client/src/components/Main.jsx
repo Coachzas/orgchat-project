@@ -39,9 +39,29 @@ function Main() {
   // 🔹 เชื่อมต่อ socket.io
   useEffect(() => {
     if (userInfo && !socket.current) {
-      socket.current = io(HOST);
+      socket.current = io(HOST, { withCredentials: true });
       socket.current.emit("add-user", userInfo.id);
       dispatch({ type: reducerCases.SET_SOCKET, socket });
+
+      // ✅ ฟัง event "role-updated" แบบเรียลไทม์
+      socket.current.on("role-updated", (data) => {
+        console.log("📡 [Main] role-updated:", data);
+
+        // ถ้า user ปัจจุบันถูกเปลี่ยน role
+        if (userInfo?.id === data.id) {
+          dispatch({
+            type: reducerCases.SET_USER_INFO,
+            userInfo: { ...userInfo, role: data.role },
+          });
+          alert(`📢 สิทธิ์ของคุณถูกเปลี่ยนเป็น "${data.role}"`);
+        }
+
+        // ถ้ามี contact list → อัปเดต role ของ contact ด้วย
+        dispatch({
+          type: reducerCases.UPDATE_CONTACT_ROLE,
+          payload: data,
+        });
+      });
     }
 
     return () => {
@@ -107,6 +127,7 @@ function Main() {
       if (socket.current) {
         socket.current.off("incoming-voice-call");
         socket.current.off("incoming-video-call");
+        socket.current.off("role-updated"); // ✅ cleanup event role-updated ด้วย
       }
     };
   }, [socket, dispatch]);

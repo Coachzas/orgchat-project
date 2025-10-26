@@ -107,6 +107,16 @@ const reducer = (state, action) => {
         currentChatUser: undefined, // ป้องกันไม่ให้ชนกับแชท 1-1
       };
 
+    case reducerCases.UPDATE_CONTACT_ROLE:
+      return {
+        ...state,
+        userContacts: state.userContacts.map((u) =>
+          u.id === action.payload.id
+            ? { ...u, role: action.payload.role }
+            : u
+        ),
+      };
+
     default:
       return state;
   }

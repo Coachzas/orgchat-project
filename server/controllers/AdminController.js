@@ -2,7 +2,6 @@ import prisma from "../utils/PrismaClient.js";
 
 /**
  * 🧩 ดึงรายชื่อผู้ใช้ทั้งหมด (เฉพาะ Admin เท่านั้น)
- * รวมข้อมูลสำคัญ เช่น id, ชื่อ, email, role
  */
 export const getAllUsers = async (req, res) => {
   try {
@@ -25,15 +24,14 @@ export const getAllUsers = async (req, res) => {
 };
 
 /**
- * 🛠 เปลี่ยน role ของผู้ใช้
- * เช่น เปลี่ยน user → admin หรือ admin → user
+ * 🛠 เปลี่ยน role ของผู้ใช้ + broadcast เรียลไทม์ผ่าน Socket.IO
  */
 export const updateUserRole = async (req, res) => {
   try {
     const { id } = req.params;
     const { role } = req.body;
 
-    // ✅ ตรวจสอบว่า role ที่ส่งมาอยู่ในระบบหรือไม่
+    // ✅ ตรวจสอบ role ให้ถูกต้อง
     if (!["employee", "admin", "manager"].includes(role)) {
       return res.status(400).json({ error: "role ไม่ถูกต้อง" });
     }
@@ -41,8 +39,28 @@ export const updateUserRole = async (req, res) => {
     const updatedUser = await prisma.user.update({
       where: { id: parseInt(id) },
       data: { role },
-      select: { id: true, firstName: true, lastName: true, email: true, role: true },
+      select: {
+        id: true,
+        firstName: true,
+        lastName: true,
+        email: true,
+        role: true,
+      },
     });
+
+    // ✅ Broadcast event เรียลไทม์
+    const io = req.app.get("io");
+    if (io) {
+      io.emit("role-updated", {
+        id: updatedUser.id,
+        role: updatedUser.role,
+        firstName: updatedUser.firstName,
+        lastName: updatedUser.lastName,
+      });
+      console.log(
+        `⚡ [Socket.IO] role-updated -> user ${updatedUser.id} (${updatedUser.firstName}): ${updatedUser.role}`
+      );
+    }
 
     res.status(200).json({
       message: `อัปเดต role ของผู้ใช้เป็น ${role} สำเร็จ`,
@@ -56,7 +74,6 @@ export const updateUserRole = async (req, res) => {
 
 /**
  * 📢 สร้างประกาศ (broadcast message)
- * จะถูกส่งเป็น message แบบไม่มี receiverId หรือ groupId
  */
 export const createAnnouncement = async (req, res) => {
   try {
@@ -75,11 +92,12 @@ export const createAnnouncement = async (req, res) => {
       },
     });
 
-    console.log("📢 ประกาศใหม่:", newAnnouncement.message);
-
-    // (ถ้าคุณมีระบบ socket.io สามารถ emit ให้ทุก client ได้ที่นี่)
+    // ✅ Broadcast ไปทุก client
     const io = req.app.get("io");
-    if (io) io.emit("announcement", newAnnouncement);
+    if (io) {
+      io.emit("announcement", newAnnouncement);
+      console.log("📢 ประกาศใหม่ broadcast:", message);
+    }
 
     res.status(201).json({
       message: "ประกาศสำเร็จ",
@@ -100,6 +118,7 @@ export const createGroupByAdmin = async (req, res) => {
     const creatorRole = req.session.user?.role;
     const creatorId = req.session.user?.id;
 
+    // ✅ ตรวจสอบสิทธิ์ก่อนสร้างกลุ่ม
     if (!["admin", "manager", "employee"].includes(creatorRole)) {
       return res.status(403).json({ error: "คุณไม่มีสิทธิ์สร้างกลุ่ม" });
     }
@@ -108,7 +127,6 @@ export const createGroupByAdmin = async (req, res) => {
       return res.status(400).json({ error: "กรุณาระบุชื่อกลุ่มและสมาชิกอย่างน้อยหนึ่งคน" });
     }
 
-    // ✅ เพิ่ม creator (admin/manager) เข้าไปในรายชื่อสมาชิกด้วย
     if (!memberIds.includes(creatorId)) {
       memberIds.push(creatorId);
     }
@@ -125,6 +143,11 @@ export const createGroupByAdmin = async (req, res) => {
     });
 
     console.log(`✅ [AdminController] ${creatorRole} สร้างกลุ่ม "${name}" สำเร็จ`);
+
+    // ✅ แจ้ง event สร้างกลุ่มใหม่แบบเรียลไทม์
+    const io = req.app.get("io");
+    if (io) io.emit("group-created", newGroup);
+
     res.status(201).json({
       message: `สร้างกลุ่ม ${name} สำเร็จ`,
       group: newGroup,
