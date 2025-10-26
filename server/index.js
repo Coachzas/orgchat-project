@@ -110,8 +110,6 @@ io.on("connection", (socket) => {
     if (sendUserSocket) {
       socket.to(sendUserSocket).emit("msg-receive", { message });
     }
-
-    // ✅ ส่งกลับให้ผู้ส่งด้วย — เพื่อให้ขึ้นทันทีโดยไม่ต้องรีเฟรช
     socket.emit("msg-receive", { message });
   });
 
