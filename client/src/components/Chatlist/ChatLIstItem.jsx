@@ -7,9 +7,8 @@ import MessageStatus from "../common/MessageStatus";
 import { FaCamera, FaMicrophone, FaPaperclip } from "react-icons/fa";
 
 function ChatListItem({ data, isContactsPage = false }) {
-  console.log("🔍 Contact Data:", data);
   const [{ userInfo }, dispatch] = useStateProvider();
-  
+
   const handleAllContactsClick = () => {
     const hasLastMsgIds =
       typeof data?.senderId === "number" || typeof data?.receiverId === "number";
@@ -20,20 +19,36 @@ function ChatListItem({ data, isContactsPage = false }) {
         : data.senderId
       : data.id;
 
+    // ✅ ป้องกัน undefined firstName / lastName โดยแยกจาก name
+    const safeFirstName = data.firstName || data.name?.split(" ")[0] || "";
+    const safeLastName = data.lastName || data.name?.split(" ")[1] || "";
+
     const chatUser = isContactsPage
-      ? { ...data }
+      ? {
+          ...data,
+          firstName: safeFirstName,
+          lastName: safeLastName,
+          profilePicture: data.profilePicture || "/default-avatar.png",
+        }
       : {
-          firstName: data.firstName,
-          lastName: data.lastName,
-          about: data.about,
-          profilePicture: data.profilePicture,
-          email: data.email,
+          firstName: safeFirstName,
+          lastName: safeLastName,
+          about: data.about || "",
+          profilePicture: data.profilePicture || "/default-avatar.png",
+          email: data.email || "",
           id: targetId,
-          role: data.role,
+          role: data.role || "user",
         };
 
+    console.log("💬 dispatch user:", chatUser);
+
+    // ✅ เคลียร์ group ก่อนเปิดแชท 1-1
+    dispatch({ type: reducerCases.SET_CURRENT_GROUP, group: undefined });
+
+    // ✅ ตั้งค่าผู้ใช้ปัจจุบัน
     dispatch({ type: reducerCases.CHANGE_CURRENT_CHAT_USER, user: chatUser });
 
+    // ✅ ปิด contacts page ถ้ามี
     if (isContactsPage) {
       dispatch({ type: reducerCases.SET_ALL_CONTACTS_PAGE, payload: false });
     }
@@ -41,7 +56,11 @@ function ChatListItem({ data, isContactsPage = false }) {
 
   const renderPreview = () => {
     if (isContactsPage) {
-      return <span className="text-secondary line-clamp-1 text-sm">{data?.about || "\u00A0"}</span>;
+      return (
+        <span className="text-secondary line-clamp-1 text-sm">
+          {data?.about || "\u00A0"}
+        </span>
+      );
     }
 
     return (
@@ -82,7 +101,7 @@ function ChatListItem({ data, isContactsPage = false }) {
     );
   };
 
-  // 🔹 เตรียม style ของ role badge
+  // 🔹 ตกแต่ง role badge
   const role = data?.role?.toLowerCase();
   const roleTitle = role ? role.charAt(0).toUpperCase() + role.slice(1) : "";
   const roleStyles = {
@@ -96,22 +115,24 @@ function ChatListItem({ data, isContactsPage = false }) {
   return (
     <div
       role="button"
-      aria-label={`เปิดแชทกับ ${data.firstName || ""} ${data.lastName || ""}`}
+      aria-label={`เปิดแชทกับ ${data.firstName || data.name || ""} ${data.lastName || ""}`}
       className="flex cursor-pointer items-center hover:bg-background-default-hover"
       onClick={handleAllContactsClick}
     >
       <div className="min-w-fit px-5 pt-3 pb-1">
-        <Avatar type="lg" image={data?.profilePicture || "/default-profile.png"} />
+        <Avatar type="lg" image={data?.profilePicture || "/default-avatar.png"} />
       </div>
 
       <div className="min-w-full flex flex-col justify-center mt-3 pr-2 w-full">
         <div className="flex justify-between">
           <div className="flex items-center gap-2 flex-wrap">
             <span className="text-white">
-              {`${data.firstName ?? ""} ${data.lastName ?? ""}`}
+              {data.firstName || data.name || ""} {data.lastName || ""}
             </span>
             {role && (
-              <span className={`px-2 py-0.5 rounded-full text-[11px] leading-none ${roleClass}`}>
+              <span
+                className={`px-2 py-0.5 rounded-full text-[11px] leading-none ${roleClass}`}
+              >
                 ({roleTitle})
               </span>
             )}

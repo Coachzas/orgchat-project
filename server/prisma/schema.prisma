@@ -41,6 +41,7 @@ model User {
   sentMessages     Message[]     @relation("sentMessages")
   receivedMessages Message[]     @relation("receivedMessages")
   groupMembers     GroupMember[]
+  groupFiles       GroupFile[]
 }
 
 model Message {
@@ -75,6 +76,7 @@ model Group {
   members    GroupMember[]
   messages   Message[]
   createdAt  DateTime       @default(now())
+  files      GroupFile[]
 }
 
 model GroupMember {
@@ -84,3 +86,18 @@ model GroupMember {
   group    Group  @relation(fields: [groupId], references: [id])
   groupId  Int
 }
+
+model GroupFile {
+  id          Int      @id @default(autoincrement())
+  group       Group    @relation(fields: [groupId], references: [id])
+  groupId     Int
+  uploader    User     @relation(fields: [uploaderId], references: [id])
+  uploaderId  Int
+
+  fileUrl     String
+  fileName    String
+  fileType    String?
+  note        String?     // ข้อความแนบ เช่น "เอกสารประชุม" หรือ "บันทึก"
+  createdAt   DateTime    @default(now())
+}
+

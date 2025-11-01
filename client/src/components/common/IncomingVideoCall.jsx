@@ -56,7 +56,7 @@ function IncomingVideoCall() {
   return (
     <div className="h-24 w-80 fixed bottom-8 right-6 z-50 rounded-md flex gap-5 items-center justify-start p-4 bg-conversation-panel-background text-white shadow-2xl border border-blue-500/50 backdrop-blur-lg">
       <Image
-        src={incomingVideoCall.profilePicture || "/default-profile.png"}
+        src={incomingVideoCall.profilePicture || "/default-avatar.png"}
         alt="avatar"
         width={70}
         height={70}

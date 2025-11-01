@@ -1,4 +1,3 @@
-// ✅ ChatContainer.jsx (แก้ socket.current ครบทุกจุด)
 import React, { useEffect, useState } from "react";
 import { useStateProvider } from "@/context/StateContext";
 import MessageStatus from "../common/MessageStatus";
@@ -6,11 +5,9 @@ import { calculateTime } from "@/utils/CalculateTime";
 import ImageMessage from "./ImageMessage";
 import dynamic from "next/dynamic";
 import FileMessage from "./FileMessage";
+import GroupFiles from "./GroupFile";
 import axios from "axios";
-import {
-  GET_GROUP_MESSAGES_ROUTE,
-  GET_MESSAGES_ROUTE,
-} from "@/utils/ApiRoutes";
+import { GET_GROUP_MESSAGES_ROUTE, GET_MESSAGES_ROUTE } from "@/utils/ApiRoutes";
 import { reducerCases } from "@/context/constants";
 import IncomingCall from "../common/IncomingCall";
 
@@ -18,7 +15,15 @@ const VoiceMessage = dynamic(() => import("./VoiceMessage"), { ssr: false });
 
 function ChatContainer() {
   const [
-    { messages, currentChatUser, currentGroup, userInfo, socket, incomingVoiceCall },
+    {
+      messages,
+      currentChatUser,
+      currentGroup,
+      userInfo,
+      socket,
+      incomingVoiceCall,
+      showGroupFiles,
+    },
     dispatch,
   ] = useStateProvider();
 
@@ -32,56 +37,24 @@ function ChatContainer() {
     }
   }, [socket, userInfo]);
 
-  // ✅ ฟังสายเข้า (voice)
+  // ✅ เข้าห้องกลุ่ม (และออกจากห้องเก่า)
   useEffect(() => {
-    if (!socket?.current) return;
-
-    const handleIncomingVoice = (data) => {
-      console.log("📞 Incoming voice call detected:", data);
-      dispatch({
-        type: reducerCases.SET_INCOMING_VOICE_CALL,
-        incomingVoiceCall: {
-          id: data.from.id,
-          firstName: data.from.firstName || data.from.name?.split(" ")[0],
-          lastName: data.from.lastName || data.from.name?.split(" ")[1] || "",
-          profilePicture: data.from.profilePicture,
-          callType: data.callType,
-          roomId: data.roomId,
-        },
-      });
-    };
-
-    const handleCancelCall = () => {
-      dispatch({
-        type: reducerCases.SET_INCOMING_VOICE_CALL,
-        incomingVoiceCall: undefined,
-      });
-    };
-
-    // ✅ ใช้ socket.current แทน socket
-    socket.current.on("incoming-voice-call", handleIncomingVoice);
-    socket.current.on("cancel-voice-call", handleCancelCall);
-
-    return () => {
-      socket.current?.off("incoming-voice-call", handleIncomingVoice);
-      socket.current?.off("cancel-voice-call", handleCancelCall);
-    };
-  }, [socket, dispatch]);
-
-  // ✅ เข้าห้องกลุ่มเมื่อ currentGroup เปลี่ยน
-  useEffect(() => {
-    if (socket?.current && currentGroup) {
-      socket.current.emit("join-group", currentGroup.id);
+    if (socket?.current) {
+      if (currentGroup) {
+        socket.current.emit("leave-all-groups"); // ออกจากทุกกลุ่มก่อน
+        socket.current.emit("join-group", currentGroup.id);
+        console.log("📡 Joined group:", currentGroup.id);
+      }
     }
   }, [socket, currentGroup]);
 
-  // ✅ โหลดข้อความกลุ่มจากฐานข้อมูล
+  // ✅ โหลดข้อความกลุ่ม (ถ้าอยู่ในกลุ่ม)
   useEffect(() => {
+    if (!currentGroup || currentChatUser) return;
+    setLoading(true);
     const fetchGroupMessages = async () => {
-      if (!currentGroup) return;
-      setLoading(true);
       try {
-        const res = await axios.get(`${GET_GROUP_MESSAGES_ROUTE}/${currentGroup.id}`);
+        const res = await axios.get(GET_GROUP_MESSAGES_ROUTE(currentGroup.id));
         dispatch({ type: reducerCases.SET_MESSAGES, messages: res.data });
       } catch (err) {
         console.error("❌ โหลดข้อความกลุ่มล้มเหลว:", err);
@@ -89,19 +62,26 @@ function ChatContainer() {
         setLoading(false);
       }
     };
-
     fetchGroupMessages();
-  }, [currentGroup, dispatch]);
+  }, [currentGroup, currentChatUser, dispatch]);
 
-  // ✅ โหลดข้อความ 1-1 จากฐานข้อมูล
+  // ✅ โหลดข้อความ 1-1 (ถ้าอยู่ในแชทส่วนตัว)
   useEffect(() => {
+    // ❗ ป้องกันกรณี userInfo หรือ currentChatUser ยังไม่พร้อม
+    if (!currentChatUser?.id || !userInfo?.id || currentGroup) return;
+
+    setLoading(true);
     const fetchPrivateMessages = async () => {
-      if (!currentChatUser) return;
-      setLoading(true);
       try {
+        console.log("📨 Fetching private messages:", {
+          from: userInfo.id,
+          to: currentChatUser.id,
+        });
+
         const res = await axios.get(
           `${GET_MESSAGES_ROUTE}/${userInfo.id}/${currentChatUser.id}`
         );
+
         dispatch({ type: reducerCases.SET_MESSAGES, messages: res.data });
       } catch (err) {
         console.error("❌ โหลดข้อความ 1-1 ล้มเหลว:", err);
@@ -111,59 +91,72 @@ function ChatContainer() {
     };
 
     fetchPrivateMessages();
-  }, [currentChatUser, dispatch, userInfo]);
+  }, [currentChatUser, currentGroup, dispatch, userInfo]);
 
-  // ✅ ฟังข้อความกลุ่มแบบเรียลไทม์
+  // ✅ ฟังข้อความแบบเรียลไทม์ (กลุ่ม + 1-1)
   useEffect(() => {
     if (!socket?.current) return;
 
-    const handleGroupMessageReceive = (data) => {
-      const { message } = data;
+    const handleGroupMessageReceive = ({ message }) => {
       if (
         message?.groupId === currentGroup?.id &&
         message?.senderId !== userInfo?.id
       ) {
-        dispatch({
-          type: reducerCases.ADD_MESSAGE,
-          newMessage: message,
-        });
+        dispatch({ type: reducerCases.ADD_MESSAGE, newMessage: message });
+      }
+    };
+
+    const handlePrivateMessageReceive = ({ message }) => {
+      if (
+        (message.receiverId === userInfo?.id || message.senderId === userInfo?.id) &&
+        message.senderId !== userInfo?.id
+      ) {
+        dispatch({ type: reducerCases.ADD_MESSAGE, newMessage: message });
       }
     };
 
     socket.current.on("group-message-receive", handleGroupMessageReceive);
-    return () => socket.current?.off("group-message-receive", handleGroupMessageReceive);
-  }, [socket, currentGroup, dispatch, userInfo]);
+    socket.current.on("msg-receive", handlePrivateMessageReceive);
 
-  // ✅ ฟังข้อความ 1-1 แบบเรียลไทม์
-  useEffect(() => {
-    if (!socket?.current) return;
-
-    const handlePrivateMessageReceive = (data) => {
-      const { message } = data;
-      if (
-        (message.receiverId === userInfo?.id ||
-          message.senderId === userInfo?.id) &&
-        message.senderId !== userInfo?.id
-      ) {
-        console.log("💬 รับข้อความเรียลไทม์:", message);
-        dispatch({
-          type: reducerCases.ADD_MESSAGE,
-          newMessage: message,
-        });
+    return () => {
+      if (socket?.current) {  
+        socket.current.off("group-message-receive", handleGroupMessageReceive);
+        socket.current.off("msg-receive", handlePrivateMessageReceive);
       }
     };
 
-    socket.current.on("msg-receive", handlePrivateMessageReceive);
-    return () => socket.current?.off("msg-receive", handlePrivateMessageReceive);
-  }, [socket, currentChatUser, dispatch, userInfo]);
+  }, [socket, currentGroup, currentChatUser, dispatch, userInfo]);
 
-  // ✅ แสดง popup รับสายเมื่อมี incoming call
   return (
     <>
       {incomingVoiceCall && <IncomingCall />}
 
       <div className="h-[80vh] w-full relative flex-grow overflow-auto custom-scrollbar">
         <div className="bg-chat-background bg-fixed h-full w-full opacity-5 fixed left-0 top-0 z-0"></div>
+
+        {currentGroup && (
+          <div className="flex justify-end mb-3 mr-6">
+            <button
+              onClick={() =>
+                dispatch({
+                  type: reducerCases.SHOW_GROUP_FILES,
+                  payload: currentGroup,
+                })
+              }
+              className="bg-icon-green hover:bg-blue-600 text-white font-medium px-3 py-1 rounded-lg transition"
+            >
+              📂 ดูไฟล์ในกลุ่ม
+            </button>
+          </div>
+        )}
+
+        {showGroupFiles && currentGroup && (
+          <GroupFiles
+            groupId={currentGroup.id}
+            onClose={() => dispatch({ type: reducerCases.HIDE_GROUP_FILES })}
+          />
+        )}
+
         <div className="mx-10 my-6 relative bottom-0 z-40 left-0">
           {loading ? (
             <p className="text-gray-400 text-center">กำลังโหลดข้อความ...</p>
@@ -182,11 +175,10 @@ function ChatContainer() {
                     >
                       {message.type === "text" && (
                         <div
-                          className={`text-white px-2 py-[5px] text-sm rounded-md flex gap-2 items-end max-w-[45%] ${
-                            isOwn
+                          className={`text-white px-2 py-[5px] text-sm rounded-md flex gap-2 items-end max-w-[45%] ${isOwn
                               ? "bg-outgoing-background"
                               : "bg-incoming-background"
-                          }`}
+                            }`}
                         >
                           <span className="break-all">{message?.message}</span>
                           <div className="flex gap-1 items-end">
@@ -203,7 +195,6 @@ function ChatContainer() {
                           </div>
                         </div>
                       )}
-
                       {message.type === "image" && (
                         <ImageMessage message={message} />
                       )}

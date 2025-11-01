@@ -4,6 +4,7 @@ import { useStateProvider } from "@/context/StateContext";
 import { reducerCases } from "@/context/constants";
 import GroupModal from "./GroupModal";
 import axios from "axios";
+import { GET_GROUP_MESSAGES_ROUTE } from "@/utils/ApiRoutes"; // ✅ เพิ่ม import ที่หายไป
 
 function GroupsList() {
   const [searchTerm, setSearchTerm] = useState("");
@@ -49,22 +50,25 @@ function GroupsList() {
   const handleSelectGroup = async (group) => {
     console.log("🔥 คลิกเข้ากลุ่ม:", group.name, "(ID:", group.id, ")");
     try {
-      // ดึงข้อความเก่าจากฐานข้อมูล
-      const res = await axios.get(
-        `http://localhost:3005/api/groups/${group.id}/messages`,
-        { withCredentials: true }
-      );
+      // 🧹 เคลียร์ state เก่าออกก่อนเพื่อกันซ้อน
+      dispatch({ type: reducerCases.SET_MESSAGES, messages: [] });
+      dispatch({ type: reducerCases.CHANGE_CURRENT_CHAT_USER, user: undefined });
+
+      // 📥 โหลดข้อความกลุ่มจาก backend
+      const res = await axios.get(GET_GROUP_MESSAGES_ROUTE(group.id), {
+        withCredentials: true,
+      });
 
       console.log("📨 ข้อความกลุ่มที่โหลดได้:", res.data);
 
-      // เก็บ messages และ group ปัจจุบันไว้ใน context
-      dispatch({ type: reducerCases.SET_MESSAGES, messages: res.data });
+      // 🧠 ตั้งค่า group ใหม่ + messages ใหม่
       dispatch({ type: reducerCases.SET_CURRENT_GROUP, group });
+      dispatch({ type: reducerCases.SET_MESSAGES, messages: res.data });
       dispatch({ type: reducerCases.SET_GROUPS_PAGE, payload: false });
 
       // ✅ เข้าห้อง group ด้วย socket.io
-      if (socket && socket.connected) {
-        socket.emit("join-group", group.id);
+      if (socket?.current) {
+        socket.current.emit("join-group", group.id);
         console.log(`✅ เข้าห้อง group_${group.id} สำเร็จ`);
       }
     } catch (err) {
@@ -103,6 +107,7 @@ function GroupsList() {
           {filteredGroups.length === 0 && (
             <p className="text-secondary text-sm mt-4">ไม่พบกลุ่ม</p>
           )}
+
           {filteredGroups.map((group) => (
             <div
               key={group.id}
@@ -110,7 +115,9 @@ function GroupsList() {
               onClick={() => handleSelectGroup(group)}
             >
               <p className="font-medium">{group.name}</p>
-              <p className="text-secondary text-sm">{group.about}</p>
+              <p className="text-secondary text-sm">
+                {group.about || "ไม่มีคำอธิบายกลุ่ม"}
+              </p>
             </div>
           ))}
 

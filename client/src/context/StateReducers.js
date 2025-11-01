@@ -34,7 +34,12 @@ const reducer = (state, action) => {
       return { ...state, contactsPage: action.payload };
 
     case reducerCases.CHANGE_CURRENT_CHAT_USER:
-      return { ...state, currentChatUser: action.user };
+      return {
+        ...state,
+        currentChatUser: action.user,
+        currentGroup: undefined,
+        messages: [],
+      };
 
     case reducerCases.SET_MESSAGES:
       return { ...state, messages: action.messages || [] };
@@ -92,7 +97,16 @@ const reducer = (state, action) => {
       };
 
     case reducerCases.SET_EXIT_CHAT:
-      return { ...state, currentChatUser: undefined };
+      console.log("🚪 ออกจากห้องแชทและกลับไปหน้า ChatList");
+      return {
+        ...state,
+        currentChatUser: undefined,
+        currentGroup: undefined,
+        messages: [],
+        showGroupFiles: false,
+        groupsPage: false,
+        contactsPage: false,
+      };
 
     case reducerCases.SET_GROUPS_PAGE:
       console.log("📂 Changing groupsPage to:", action.payload);
@@ -104,8 +118,16 @@ const reducer = (state, action) => {
       return {
         ...state,
         currentGroup: action.group,
-        currentChatUser: undefined, // ป้องกันไม่ให้ชนกับแชท 1-1
+        currentChatUser: undefined, // ✅ ป้องกันชนกับ 1-1
+        messages: [],               // ✅ เคลียร์ข้อความเก่า
       };
+
+    case reducerCases.SHOW_GROUP_FILES:
+      return { ...state, showGroupFiles: true, currentGroup: action.payload };
+
+    case reducerCases.HIDE_GROUP_FILES:
+      return { ...state, showGroupFiles: false };
+
 
     case reducerCases.UPDATE_CONTACT_ROLE:
       return {

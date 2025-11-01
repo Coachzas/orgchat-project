@@ -62,7 +62,7 @@ function IncomingCall() {
       {/* รูปโปรไฟล์ */}
       <div>
         <Image
-          src={incomingVoiceCall.profilePicture || "/default-profile.png"}
+          src={incomingVoiceCall.profilePicture || "/default-avatar.png"}
           alt="avatar"
           width={70}
           height={70}

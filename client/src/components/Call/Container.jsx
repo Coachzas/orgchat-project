@@ -244,7 +244,7 @@ function Container({ data }) {
       {(!callAccepted || isVoice) && (
         <div className="my-24">
           <Image
-            src={data.profilePicture || "/default-profile.png"}
+            src={data.profilePicture || "/default-avatar.png"}
             alt="avatar"
             height={300}
             width={300}

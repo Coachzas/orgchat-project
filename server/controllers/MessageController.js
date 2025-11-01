@@ -16,6 +16,7 @@ const ensureAudioUploadsFolder = () => {
 export const addMessage = async (req, res, next) => {
   try {
     const { message, from, to } = req.body;
+    console.log("🧾 addMessage payload:", req.body);
     const getUser = onlineUsers?.get?.(to);
 
     if (message && from && to) {
@@ -56,6 +57,27 @@ export const getMessages = async (req, res, next) => {
   } catch (err) {
     console.error("❌ getMessages error:", err);
     return res.status(500).json({ error: "Internal Server Error" });
+  }
+};
+
+export const getGroupMessages = async (req, res) => {
+  try {
+    const { groupId } = req.params;
+
+    const messages = await prisma.message.findMany({
+      where: { groupId: parseInt(groupId) },
+      include: {
+        sender: {
+          select: { id: true, firstName: true, lastName: true, profilePicture: true },
+        },
+      },
+      orderBy: { createdAt: "asc" },
+    });
+
+    res.status(200).json(messages);
+  } catch (error) {
+    console.error("❌ [getGroupMessages] Error:", error);
+    res.status(500).json({ error: "Failed to fetch group messages" });
   }
 };
 

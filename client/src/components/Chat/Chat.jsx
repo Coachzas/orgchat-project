@@ -1,9 +1,21 @@
 import React from "react";
-import ChatHeader from "./ChatHeader"; // ✅ ตรวจสอบว่า path ถูกต้อง
+import { useStateProvider } from "@/context/StateContext"; // ✅ ดึง context
+import ChatHeader from "./ChatHeader";
 import ChatContainer from "./ChatContainer";
 import MessageBar from "./MessageBar";
 
 function Chat() {
+  const [{ currentChatUser, currentGroup }] = useStateProvider(); // ✅ เพิ่ม currentGroup
+
+  // ✅ แสดงเมื่อมีทั้งแชท 1-1 หรือกลุ่ม
+  if (!currentChatUser && !currentGroup) {
+    return (
+      <div className="flex justify-center items-center w-full h-full text-gray-400">
+        เลือกแชทหรือกลุ่มเพื่อเริ่มต้นสนทนา
+      </div>
+    );
+  }
+
   return (
     <div className="border-conversation-border border-l w-full bg-conversation-panel-background flex flex-col h-[100vh] z-10">
       <ChatHeader />

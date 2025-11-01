@@ -1,11 +1,15 @@
 import express from "express";
+import { getGroupMessages } from "../controllers/MessageController.js";
 import prisma from "../utils/PrismaClient.js";
+import { upload, uploadGroupFile, getGroupFiles } from "../controllers/GroupFileController.js";
+import { isAuthenticated } from "../middlewares/AuthMiddleware.js";
 
 const router = express.Router();
 
 // ✅ สร้างกลุ่มใหม่
 router.post("/create", async (req, res) => {
   try {
+    console.log("📦 กลุ่มที่รับจาก client:", req.body);
     const { name, about, members } = req.body;
 
     if (!name || !members || !Array.isArray(members) || members.length === 0) {
@@ -32,6 +36,9 @@ router.post("/create", async (req, res) => {
     res.status(500).json({ error: "สร้างกลุ่มไม่สำเร็จ" });
   }
 });
+
+// ✅ ดึงข้อความในกลุ่มทั้งหมด
+router.get("/get-group-messages/:groupId", getGroupMessages);
 
 // ✅ ดึงรายการกลุ่มทั้งหมด
 router.get("/", async (req, res) => {
@@ -111,4 +118,9 @@ router.get("/:groupId/messages", async (req, res) => {
   }
 });
 
+// 📤 ฝากไฟล์ในกลุ่ม
+router.post("/:groupId/files", isAuthenticated, upload.single("file"), uploadGroupFile);
+
+// 📥 ดูไฟล์ทั้งหมดในกลุ่ม
+router.get("/:groupId/files", isAuthenticated, getGroupFiles);
 export default router;

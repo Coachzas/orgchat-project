@@ -5,6 +5,7 @@ import {
   ADD_IMAGE_MESSAGES_ROUTE,
   ADD_MESSAGE_ROUTE,
   ADD_AUDIO_MESSAGES_ROUTE,
+  ADD_GROUP_MESSAGE_ROUTE,
 } from "@/utils/ApiRoutes";
 import axios from "axios";
 import React, { useState, useRef, useEffect } from "react";
@@ -38,45 +39,94 @@ function MessageBar() {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
+  useEffect(() => {
+    console.log("📂 currentGroup:", currentGroup);
+    console.log("👤 currentChatUser:", currentChatUser);
+  }, [currentGroup, currentChatUser]);
+
   // ✅ ส่งข้อความ text หรือ emoji
   const sendMessage = async () => {
     if (!message.trim()) return;
+
     try {
-      const res = await axios.post(
-        ADD_MESSAGE_ROUTE,
-        {
-          from: userInfo.id,
-          to: currentChatUser?.id || "",
-          groupId: currentGroup?.id || "",
-          message,
-        },
-        { withCredentials: true }
-      );
+      // 🧠 ตรวจสอบว่ามีผู้ส่ง-ผู้รับหรือไม่ก่อนส่ง
+      if (!userInfo?.id) {
+        console.warn("⚠️ Missing userInfo.id, cannot send message.");
+        return;
+      }
 
-      const newMessage = {
-        ...res.data,
-        senderId: userInfo.id,
-        message,
-        type: "text",
-        createdAt: new Date().toISOString(),
-      };
-
-      dispatch({ type: reducerCases.ADD_MESSAGE, newMessage });
-
-      if (socket?.current) {
-        socket.current.emit(
-          currentGroup ? "group-message-send" : "send-msg",
-          currentGroup
-            ? { from: userInfo.id, message, type: "text", groupId: currentGroup.id }
-            : { from: userInfo.id, message, type: "text", to: currentChatUser?.id }
+      // ✅ ถ้าอยู่ในกลุ่ม
+      if (currentGroup?.id) {
+        const res = await axios.post(
+          ADD_GROUP_MESSAGE_ROUTE,
+          {
+            from: userInfo.id,
+            groupId: currentGroup.id,
+            message,
+            type: "text",
+          },
+          { withCredentials: true }
         );
+
+        dispatch({
+          type: reducerCases.ADD_MESSAGE,
+          newMessage: {
+            ...res.data.message,
+            senderId: userInfo.id,
+            message,
+            type: "text",
+          },
+        });
+
+        socket?.current?.emit("group-message-send", {
+          from: userInfo.id,
+          message,
+          type: "text",
+          groupId: currentGroup.id,
+        });
+      }
+      // ✅ ถ้าเป็นแชท 1-1
+      else if (currentChatUser?.id) {
+        console.log("📨 Sending private message to:", currentChatUser.id);
+        const res = await axios.post(
+          ADD_MESSAGE_ROUTE,
+          {
+            from: userInfo.id,
+            to: currentChatUser.id,
+            message,
+          },
+          { withCredentials: true }
+        );
+
+        dispatch({
+          type: reducerCases.ADD_MESSAGE,
+          newMessage: {
+            ...res.data.message,
+            senderId: userInfo.id,
+            message,
+            type: "text",
+          },
+        });
+
+        socket?.current?.emit("send-msg", {
+          from: userInfo.id,
+          to: currentChatUser.id,
+          message,
+          type: "text",
+        });
+      }
+      // ❌ ถ้าไม่มีทั้ง currentGroup และ currentChatUser
+      else {
+        console.warn("⚠️ No chat target found, message not sent.");
+        return;
       }
 
       setMessage("");
     } catch (error) {
-      console.error("❌ Text send failed:", error);
+      console.error("❌ Text send failed:", error.response?.data || error.message);
     }
   };
+
 
   // ✅ ส่งรูปภาพ
   const handleImageUpload = async (e) => {
@@ -237,10 +287,10 @@ function MessageBar() {
               type="text"
               placeholder={
                 currentGroup
-                  ? `ส่งข้อความใน \"${currentGroup.name}\"...`
+                  ? `ส่งข้อความใน "${currentGroup.name}"...`
                   : currentChatUser
-                  ? `พิมพ์ข้อความถึง ${currentChatUser.firstName}...`
-                  : "พิมพ์ข้อความ..."
+                    ? `พิมพ์ข้อความถึง ${currentChatUser.firstName}...`
+                    : "พิมพ์ข้อความ..."
               }
               className="bg-input-background text-sm text-white h-10 rounded-lg px-5 py-4 w-full"
               value={message}

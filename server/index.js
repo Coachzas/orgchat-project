@@ -47,6 +47,8 @@ app.use(
 app.use("/uploads/images/", express.static("uploads/images"));
 app.use("/uploads/audios/", express.static("uploads/audios"));
 app.use("/uploads/files/", express.static("uploads/files"));
+app.use("/uploads/group-files/", express.static("uploads/group-files"));
+
 
 // 🔹 Routes
 app.use("/api/auth", AuthRoutes);
@@ -110,15 +112,24 @@ io.on("connection", (socket) => {
     if (sendUserSocket) {
       socket.to(sendUserSocket).emit("msg-receive", { message });
     }
-    socket.emit("msg-receive", { message });
+    //socket.emit("msg-receive", { message });
   });
 
   // 📢 ส่วนของ Group Chat
-  // 🧩 เมื่อผู้ใช้เข้าห้องกลุ่ม
+  // 🧩 
+  socket.on("leave-all-groups", () => {
+    const rooms = Array.from(socket.rooms);
+    rooms.forEach((room) => {
+      if (room.startsWith("group_")) socket.leave(room);
+    });
+    console.log(`🚪 ผู้ใช้ ${socket.id} ออกจากทุกห้องกลุ่มแล้ว`);
+  });
+
   socket.on("join-group", (groupId) => {
     socket.join(`group_${groupId}`);
     console.log(`👥 ผู้ใช้ ${socket.id} เข้าห้อง group_${groupId}`);
   });
+
 
   // 📨 ส่งข้อความในกลุ่ม (เรียลไทม์ทั้งผู้ส่งและผู้รับ)
   socket.on("group-message-send", (data) => {

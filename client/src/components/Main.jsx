@@ -19,6 +19,7 @@ function Main() {
     {
       userInfo,
       currentChatUser,
+      currentGroup,
       messagesSearch,
       videoCall,
       voiceCall,
@@ -56,6 +57,7 @@ function Main() {
 
       // ✅ ฟัง event รับข้อความแบบเรียลไทม์ (ป้องกันข้อความเบิ้ล)
       socket.current.on("msg-receive", ({ message }) => {
+        console.log("📨 ได้รับข้อความใหม่จาก socket:", message);
         if (message.senderId !== userInfo.id) {
           dispatch({
             type: reducerCases.ADD_MESSAGE,
@@ -153,11 +155,11 @@ function Main() {
         <div className="grid grid-cols-main h-screen w-screen max-h-screen max-w-full overflow-hidden">
           <ChatList />
           <div className="flex justify-center items-center w-full">
-            {currentChatUser ? (
+            {currentChatUser || currentGroup ? (
               <div
                 className={`w-full ${messagesSearch ? "grid grid-cols-2" : "flex"}`}
               >
-                <Chat key={currentChatUser?.id} />
+                <Chat key={currentChatUser?.id || currentGroup?.id} />
                 {messagesSearch && <SearchMessages />}
               </div>
             ) : (

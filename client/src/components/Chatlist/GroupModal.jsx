@@ -2,13 +2,15 @@ import React, { useState } from "react";
 import { IoMdClose } from "react-icons/io";
 import { useStateProvider } from "@/context/StateContext";
 import axios from "axios";
+import { reducerCases } from "@/context/constants";
+import { ADD_GROUP_ROUTE } from "@/utils/ApiRoutes";
 
 function GroupModal({ onClose }) {
   const [groupName, setGroupName] = useState("");
   const [groupDescription, setGroupDescription] = useState("");
   const [selectedMembers, setSelectedMembers] = useState([]);
 
-  const [{ userContacts }] = useStateProvider();
+  const [{ userContacts, userInfo, socket }, dispatch] = useStateProvider();
 
   const toggleMember = (userId) => {
     if (selectedMembers.includes(userId)) {
@@ -19,31 +21,34 @@ function GroupModal({ onClose }) {
   };
 
   const handleCreateGroup = async () => {
-    if (!groupName.trim()) {
-      alert("กรุณากรอกชื่อกลุ่ม");
-      return;
-    }
-
-    if (selectedMembers.length === 0) {
-      alert("กรุณาเลือกสมาชิกอย่างน้อย 1 คน");
-      return;
-    }
+    if (!groupName.trim()) return alert("กรุณากรอกชื่อกลุ่ม");
+    if (selectedMembers.length === 0) return alert("กรุณาเลือกสมาชิกอย่างน้อย 1 คน");
 
     try {
-      // แปลงสมาชิกเป็น array ของ number
       const membersIds = selectedMembers.map((id) => Number(id));
 
       const response = await axios.post(
-        "http://localhost:3005/api/groups/create",
+        ADD_GROUP_ROUTE,
         {
           name: groupName.trim(),
-          about: groupDescription.trim() || null, // ให้ backend รับ null ถ้าว่าง
+          about: groupDescription.trim() || null,
           members: membersIds,
         },
         { withCredentials: true }
       );
 
-      console.log("✅ Group created:", response.data);
+      const newGroup = response.data;
+
+      console.log("✅ Group created:", newGroup);
+
+      // ✅ เข้าห้องกลุ่มใหม่ผ่าน socket
+      socket?.current?.emit("join-group", newGroup.id);
+
+      // ✅ ตั้งกลุ่มปัจจุบันใน state (จะให้ ChatContainer แสดงแชทกลุ่มแทน 1-1)
+      dispatch({ type: reducerCases.SET_CURRENT_GROUP, group: newGroup });
+      dispatch({ type: reducerCases.SET_MESSAGES, messages: [] });
+
+      // ✅ ปิด modal
       onClose();
     } catch (err) {
       console.error("❌ Failed to create group:", err.response?.data || err);

@@ -30,10 +30,10 @@ export const GET_MESSAGES_ROUTE_1V1 = (meId, otherId) =>
 
 // ดึงข้อความกลุ่ม
 export const GET_GROUP_MESSAGES_ROUTE = (groupId) =>
-  `${MESSAGE_ROUTE}/get-group-messages/${groupId}`;
+  `${HOST}/api/groups/${groupId}/messages`;
 
-// ส่งข้อความแบบรูปภาพ
-export const ADD_IMAGE_MESSAGES_ROUTE = `${MESSAGE_ROUTE}/add-image-message`;
+
+// ส่งข้อความแบบรูปภาพGES_ROUTE = `${MESSAGE_ROUTE}/add-image-message`;
 
 // ส่งข้อความเสียง
 export const ADD_AUDIO_MESSAGES_ROUTE = `${MESSAGE_ROUTE}/add-audio-message`;
@@ -43,6 +43,10 @@ export const ADD_FILE_CHAT_ROUTE = `${MESSAGE_ROUTE}/add-file-message`;
 
 // 📎 FILE ROUTES
 export const ADD_FILE_MESSAGE_ROUTE = `${HOST}/api/files/upload`;
+export const ADD_GROUP_MESSAGE_ROUTE = `${MESSAGE_ROUTE}/add-group-message`;
+
+// 🧩 GROUP ROUTES
+export const ADD_GROUP_ROUTE = `${HOST}/api/groups/create`;
 
 // 👑 ADMIN ROLE ROUTES (optional)
 const USER_ROUTE = `${HOST}/api/users`;

@@ -35,18 +35,22 @@ function ChatListHeader() {
       type: reducerCases.SET_ALL_CONTACTS_PAGE,
       payload: !contactsPage,
     });
+    dispatch({ type: reducerCases.SET_GROUPS_PAGE, payload: false });
   };
 
   return (
     <div className="h-16 px-4 py-3 flex justify-between items-center">
+      {/* 🧩 โปรไฟล์ผู้ใช้ */}
       <div className="flex items-center gap-4 flex-grow">
         <Avatar
           type="sm"
-          image={userInfo?.profilePicture || "/default-profile.png"}
+          image={userInfo?.profilePicture || "/default-avatar.png"}
         />
         <div className="flex flex-col overflow-hidden">
           <span className="text-primary-strong text-sm font-semibold truncate">
-            {userInfo?.firstName} {userInfo?.lastName}
+            {/* ✅ ป้องกัน undefined firstName/lastName */}
+            {userInfo?.firstName || userInfo?.name || "ไม่ระบุ"}{" "}
+            {userInfo?.lastName || ""}
             {userInfo?.role && (
               <span className="text-xs text-gray-400 ml-1">
                 ({userInfo.role})
@@ -54,10 +58,12 @@ function ChatListHeader() {
             )}
           </span>
           <span className="text-secondary text-xs truncate">
-            {userInfo?.about}
+            {userInfo?.about || "ไม่มีข้อมูลส่วนตัว"}
           </span>
         </div>
       </div>
+
+      {/* 🧭 ปุ่มควบคุม */}
       <div className="flex gap-6">
         <BsFillChatLeftTextFill
           className="text-panel-header-icon cursor-pointer text-xl"
@@ -78,6 +84,7 @@ function ChatListHeader() {
           id="context-opener"
         />
       </div>
+
       {isContextMenuVisible && (
         <ContextMenu
           options={contextMenuOptions}
