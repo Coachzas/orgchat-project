@@ -1,7 +1,6 @@
 import { Router } from "express";
 import multer from "multer";
 import {
-  registerUser,
   loginUser,
   getAllUsers,
   logoutUser,
@@ -15,7 +14,6 @@ import { isAuthenticated } from "../middlewares/AuthMiddleware.js";
 const router = Router();
 const uploadImage = multer({ dest: "uploads/images/" });
 
-router.post("/register", registerUser);
 router.post("/login", loginUser);
 router.get("/get-contacts", getAllUsers);
 router.post("/logout", logoutUser);

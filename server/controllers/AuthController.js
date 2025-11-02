@@ -12,74 +12,7 @@ const DISPOSABLE_DOMAINS = new Set([
   "tempmail.com", "dispostable.com"
 ]);
 
-/* ----------------------------------------
- REGISTER - สมัครสมาชิก
----------------------------------------- */
-export const registerUser = async (req, res, next) => {
-  try {
-    let { email, password, firstName, lastName, about = "", image = "" } = req.body;
-
-    email = (email || "").trim().toLowerCase();
-    firstName = (firstName || "").trim();
-    lastName = (lastName || "").trim();
-    about = (about || "").trim();
-
-    if (!email || !password || !firstName || !lastName) {
-      return res.status(400).json({ status: false, msg: "ข้อมูลไม่ครบถ้วน" });
-    }
-
-    if (!EMAIL_REGEX.test(email)) {
-      return res.status(400).json({ status: false, msg: "รูปแบบอีเมลไม่ถูกต้อง" });
-    }
-
-    const domain = email.split("@")[1];
-    if (DISPOSABLE_DOMAINS.has(domain)) {
-      return res.status(400).json({ status: false, msg: "ไม่อนุญาตโดเมนอีเมลนี้" });
-    }
-
-    if (password.length < 3) {
-      return res.status(400).json({ status: false, msg: "รหัสผ่านต้องอย่างน้อย 3 ตัวอักษร" });
-    }
-    if (firstName.length < 2 || lastName.length < 2) {
-      return res.status(400).json({ status: false, msg: "ชื่อ/นามสกุลต้องอย่างน้อย 2 ตัวอักษร" });
-    }
-    if (about.length > 200) {
-      return res.status(400).json({ status: false, msg: "เกี่ยวกับคุณต้องไม่เกิน 200 ตัวอักษร" });
-    }
-
-    const existingUser = await prisma.user.findUnique({ where: { email } });
-    if (existingUser) {
-      return res.status(409).json({ status: false, msg: "อีเมล์ได้ถูกลงทะเบียนเรียบร้อยแล้ว" });
-    }
-
-    const hashedPassword = await bcrypt.hash(password, 10);
-
-    const user = await prisma.user.create({
-      data: {
-        email,
-        password: hashedPassword,
-        firstName,
-        lastName,
-        about,
-        profilePicture: image,
-        role: "user",
-      },
-      select: {
-        id: true,
-        email: true,
-        firstName: true,
-        lastName: true,
-        about: true,
-        profilePicture: true,
-        role: true,
-      },
-    });
-
-    return res.status(201).json({ status: true, msg: "ลงทะเบียนสำเร็จแล้ว", user });
-  } catch (err) {
-    next(err);
-  }
-};
+/* Registration removed - admin will create users */
 
 /* ----------------------------------------
  LOGIN - เข้าสู่ระบบ
