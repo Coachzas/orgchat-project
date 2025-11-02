@@ -3,7 +3,6 @@ export const HOST = "http://localhost:3005";
 
 // 🔐 AUTH ROUTES
 export const AUTH_ROUTE = `${HOST}/api/auth`;
-export const REGISTER_ROUTE = `${AUTH_ROUTE}/register`;
 export const LOGIN_ROUTE = `${AUTH_ROUTE}/login`;
 export const LOGOUT_ROUTE = `${AUTH_ROUTE}/logout`;
 // NOTE: server implements GET /api/auth/me to return current session user
