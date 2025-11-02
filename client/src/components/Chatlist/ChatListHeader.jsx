@@ -22,6 +22,13 @@ function ChatListHeader() {
 
   const contextMenuOptions = [
     {
+      name: "แก้ไขโปรไฟล์",
+      callback: () => {
+        setIsContextMenuVisible(false);
+        router.push("/profile");
+      },
+    },
+    {
       name: "Logout",
       callback: async () => {
         setIsContextMenuVisible(false);
