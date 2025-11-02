@@ -47,6 +47,7 @@ function MessageBar() {
   // ✅ ส่งข้อความ text หรือ emoji
   const sendMessage = async () => {
     if (!message.trim()) return;
+    const formattedMessage = message.replace(/(\r\n|\n|\r)/g, " ").trim();
 
     try {
       // 🧠 ตรวจสอบว่ามีผู้ส่ง-ผู้รับหรือไม่ก่อนส่ง
@@ -62,28 +63,13 @@ function MessageBar() {
           {
             from: userInfo.id,
             groupId: currentGroup.id,
-            message,
+            message: formattedMessage,
             type: "text",
           },
           { withCredentials: true }
         );
 
-        dispatch({
-          type: reducerCases.ADD_MESSAGE,
-          newMessage: {
-            ...res.data.message,
-            senderId: userInfo.id,
-            message,
-            type: "text",
-          },
-        });
-
-        socket?.current?.emit("group-message-send", {
-          from: userInfo.id,
-          message,
-          type: "text",
-          groupId: currentGroup.id,
-        });
+        // server controller will broadcast the saved message to the group
       }
       // ✅ ถ้าเป็นแชท 1-1
       else if (currentChatUser?.id) {
@@ -93,27 +79,11 @@ function MessageBar() {
           {
             from: userInfo.id,
             to: currentChatUser.id,
-            message,
+            message: formattedMessage,
           },
           { withCredentials: true }
         );
-
-        dispatch({
-          type: reducerCases.ADD_MESSAGE,
-          newMessage: {
-            ...res.data.message,
-            senderId: userInfo.id,
-            message,
-            type: "text",
-          },
-        });
-
-        socket?.current?.emit("send-msg", {
-          from: userInfo.id,
-          to: currentChatUser.id,
-          message,
-          type: "text",
-        });
+        // server controller will broadcast the saved message to recipient
       }
       // ❌ ถ้าไม่มีทั้ง currentGroup และ currentChatUser
       else {
@@ -145,24 +115,8 @@ function MessageBar() {
         withCredentials: true,
       });
 
-      const newMessage = {
-        ...res.data,
-        senderId: userInfo.id,
-        type: "image",
-        message: URL.createObjectURL(file),
-        createdAt: new Date().toISOString(),
-      };
-
-      dispatch({ type: reducerCases.ADD_MESSAGE, newMessage });
-
-      if (socket?.current) {
-        socket.current.emit(
-          currentGroup ? "group-message-send" : "send-msg",
-          currentGroup
-            ? { from: userInfo.id, message: newMessage.message, type: "image", groupId: currentGroup.id }
-            : { from: userInfo.id, message: newMessage.message, type: "image", to: currentChatUser?.id }
-        );
-      }
+      // server will broadcast the saved message via socket; no local dispatch to avoid duplicates
+      // server controller will broadcast the saved message; no client socket emit to avoid duplicate
     } catch (error) {
       console.error("❌ Image upload failed:", error);
     }
@@ -185,24 +139,8 @@ function MessageBar() {
         withCredentials: true,
       });
 
-      const newMessage = {
-        ...res.data,
-        senderId: userInfo.id,
-        type: "file",
-        fileName: file.name,
-        createdAt: new Date().toISOString(),
-      };
-
-      dispatch({ type: reducerCases.ADD_MESSAGE, newMessage });
-
-      if (socket?.current) {
-        socket.current.emit(
-          currentGroup ? "group-message-send" : "send-msg",
-          currentGroup
-            ? { from: userInfo.id, message: newMessage.message, type: "file", groupId: currentGroup.id }
-            : { from: userInfo.id, message: newMessage.message, type: "file", to: currentChatUser?.id }
-        );
-      }
+      // server will broadcast the saved file message via socket; no local dispatch to avoid duplicates
+      // server controller will broadcast the saved file message; no client socket emit
     } catch (error) {
       console.error("❌ File upload failed:", error);
     }
@@ -222,17 +160,7 @@ function MessageBar() {
         headers: { "Content-Type": "multipart/form-data" },
         withCredentials: true,
       });
-      const newMessage = { ...res.data, senderId: userInfo.id, type: "audio" };
-      dispatch({ type: reducerCases.ADD_MESSAGE, newMessage });
-
-      if (socket?.current) {
-        socket.current.emit(
-          currentGroup ? "group-message-send" : "send-msg",
-          currentGroup
-            ? { from: userInfo.id, message: newMessage.message, type: "audio", groupId: currentGroup.id }
-            : { from: userInfo.id, message: newMessage.message, type: "audio", to: currentChatUser?.id }
-        );
-      }
+      // server controller will broadcast the saved audio message; no client socket emit
     } catch (error) {
       console.error("❌ Audio upload failed:", error);
     }

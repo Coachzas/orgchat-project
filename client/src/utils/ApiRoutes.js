@@ -33,7 +33,8 @@ export const GET_GROUP_MESSAGES_ROUTE = (groupId) =>
   `${HOST}/api/groups/${groupId}/messages`;
 
 
-// ส่งข้อความแบบรูปภาพGES_ROUTE = `${MESSAGE_ROUTE}/add-image-message`;
+// ส่งข้อความแบบรูปภาพ
+export const ADD_IMAGE_MESSAGES_ROUTE = `${MESSAGE_ROUTE}/add-image-message`;
 
 // ส่งข้อความเสียง
 export const ADD_AUDIO_MESSAGES_ROUTE = `${MESSAGE_ROUTE}/add-audio-message`;

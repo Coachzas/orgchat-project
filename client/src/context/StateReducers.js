@@ -47,11 +47,21 @@ const reducer = (state, action) => {
     case reducerCases.SET_SOCKET:
       return { ...state, socket: action.socket };
 
-    case reducerCases.ADD_MESSAGE:
+    case reducerCases.ADD_MESSAGE: {
+      // Deduplicate messages by id (or fallback to senderId+createdAt) to avoid duplicates in UI
+      const existing = (state.messages || []).some((m) => {
+        if (m.id && action.newMessage.id) return String(m.id) === String(action.newMessage.id);
+        return (
+          String(m.senderId) === String(action.newMessage.senderId) &&
+          String(m.createdAt) === String(action.newMessage.createdAt)
+        );
+      });
+      if (existing) return state;
       return {
         ...state,
         messages: [...(state.messages || []), action.newMessage],
       };
+    }
 
     case reducerCases.SET_MESSAGE_SEARCH:
       return { ...state, messagesSearch: !state.messagesSearch };

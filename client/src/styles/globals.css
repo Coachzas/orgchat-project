@@ -11,3 +11,10 @@
 .custom-scrollbar::-webkit-scrollbar-thumb{
     background-color: #ffffff3b;
 }
+
+@layer utilities {
+  .break-anywhere {
+    overflow-wrap: anywhere;
+    word-break: break-word;
+  }
+}
