@@ -31,10 +31,33 @@ function Main() {
 
   const socket = useRef(null);
 
-  // 🔹 ตรวจสอบผู้ใช้ ถ้าไม่มีให้กลับไป login
+  // � ตรวจสอบ session ปัจจุบัน เมื่อเปิดแอป (ถ้าหน้าตัวแปร userInfo ยังว่าง)
+  const [checkingAuth, setCheckingAuth] = useState(true);
   useEffect(() => {
-    if (!userInfo) router.push("/login");
-  }, [userInfo, router]);
+    const checkSession = async () => {
+      try {
+        if (!userInfo) {
+          const res = await axios.get(`${HOST}/api/auth/me`, { withCredentials: true });
+          if (res?.data?.user) {
+            dispatch({ type: reducerCases.SET_USER_INFO, userInfo: res.data.user });
+          }
+        }
+      } catch (err) {
+        // ถ้าไม่มี session จะถูก redirect โดย useEffect ด้านล่าง (เมื่อ checkingAuth = false)
+        console.log("No active session or unable to fetch current user", err?.response?.status || err?.message);
+      } finally {
+        setCheckingAuth(false);
+      }
+    };
+
+    checkSession();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // �🔹 ตรวจสอบผู้ใช้ ถ้าไม่มีให้กลับไป login (แต่รอการตรวจสอบ session เริ่มต้นก่อน)
+  useEffect(() => {
+    if (!userInfo && !checkingAuth) router.push("/login");
+  }, [userInfo, router, checkingAuth]);
 
   // 🔹 เชื่อมต่อ socket.io และฟัง event ทั้งหมด (role, message)
   useEffect(() => {

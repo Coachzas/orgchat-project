@@ -5,12 +5,16 @@ import {
   updateUserRole,
   createAnnouncement,
   createGroupByAdmin,
+  createUserByAdmin,
 } from "../controllers/AdminController.js";
 
 const router = express.Router();
 
 // ✅ ดึงรายชื่อผู้ใช้ทั้งหมด (เฉพาะ admin)
 router.get("/users", isAuthenticated, isAdmin, getAllUsers);
+
+// ✅ สร้างผู้ใช้ใหม่โดย Admin
+router.post("/users", isAuthenticated, isAdmin, createUserByAdmin);
 
 // ✅ เปลี่ยน role ของผู้ใช้
 router.put("/users/:id/role", isAuthenticated, isAdmin, updateUserRole);

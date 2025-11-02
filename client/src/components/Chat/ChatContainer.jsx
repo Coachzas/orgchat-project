@@ -6,6 +6,7 @@ import ImageMessage from "./ImageMessage";
 import dynamic from "next/dynamic";
 import FileMessage from "./FileMessage";
 import GroupFiles from "./GroupFile";
+import AdminNote from "./AdminNote";
 import axios from "axios";
 import { GET_GROUP_MESSAGES_ROUTE, GET_MESSAGES_ROUTE, GET_ALL_CONTACTS } from "@/utils/ApiRoutes";
 import { reducerCases } from "@/context/constants";
@@ -29,6 +30,7 @@ function ChatContainer() {
   ] = useStateProvider();
 
   const [loading, setLoading] = useState(false);
+  const [showAdminNotes, setShowAdminNotes] = useState(false);
 
   // ✅ เพิ่มผู้ใช้เข้า online list เมื่อ socket เชื่อมต่อ
   useEffect(() => {
@@ -138,7 +140,7 @@ function ChatContainer() {
         <div className="bg-chat-background bg-fixed h-full w-full opacity-5 fixed left-0 top-0 z-0"></div>
 
         {currentGroup && (
-          <div className="flex justify-end mb-3 mr-6">
+          <div className="flex justify-end mb-3 mr-6 gap-3">
             <button
               onClick={() =>
                 dispatch({
@@ -150,6 +152,15 @@ function ChatContainer() {
             >
               📂 ดูไฟล์ในกลุ่ม
             </button>
+
+            {userInfo?.role === "admin" && (
+              <button
+                onClick={() => setShowAdminNotes(true)}
+                className="bg-yellow-500 hover:bg-yellow-600 text-black font-medium px-3 py-1 rounded-lg transition"
+              >
+                📝 Admin Notes
+              </button>
+            )}
           </div>
         )}
 
@@ -158,6 +169,10 @@ function ChatContainer() {
             groupId={currentGroup.id}
             onClose={() => dispatch({ type: reducerCases.HIDE_GROUP_FILES })}
           />
+        )}
+
+        {showAdminNotes && currentGroup && userInfo?.role === "admin" && (
+          <AdminNote groupId={currentGroup.id} onClose={() => setShowAdminNotes(false)} />
         )}
 
         <div className="mx-10 my-6 relative bottom-0 z-40 left-0">

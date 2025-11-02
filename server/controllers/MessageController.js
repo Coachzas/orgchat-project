@@ -96,6 +96,67 @@ export const getGroupMessages = async (req, res) => {
   }
 };
 
+// ---------- NEW: Group Notes (store as message.type = 'note') ----------
+export const getGroupNotes = async (req, res) => {
+  try {
+    const { groupId } = req.params;
+    const notes = await prisma.message.findMany({
+      where: { groupId: parseInt(groupId), type: "note" },
+      include: {
+        sender: { select: { id: true, firstName: true, lastName: true, profilePicture: true } },
+      },
+      orderBy: { createdAt: "desc" },
+    });
+    res.status(200).json(notes);
+  } catch (error) {
+    console.error("❌ [getGroupNotes] Error:", error);
+    res.status(500).json({ error: "Failed to fetch group notes" });
+  }
+};
+
+// เพิ่มโน้ตโดย admin เท่านั้น
+export const addGroupNote = async (req, res, next) => {
+  try {
+    const { groupId } = req.params;
+    const { from, message } = req.body;
+
+    if (!from || !groupId || !message) {
+      return res.status(400).json({ error: "ข้อมูลไม่ครบสำหรับโน้ต" });
+    }
+
+    // ตรวจสิทธิ์: ต้องเป็น admin เท่านั้น
+    const role = req.session?.user?.role;
+    if (role !== "admin") {
+      return res.status(403).json({ error: "ห้าม: เฉพาะ admin เท่านั้นในการลงโน้ต" });
+    }
+
+    const newNote = await prisma.message.create({
+      data: {
+        message,
+        sender: { connect: { id: parseInt(from) } },
+        group: { connect: { id: parseInt(groupId) } },
+        type: "note",
+      },
+      include: { sender: true },
+    });
+
+    // Broadcast ในนามของกลุ่ม
+    if (global.io) {
+      try {
+        global.io.to(`group_${groupId}`).emit("group-note-receive", { note: newNote });
+      } catch (err) {
+        console.warn("Could not emit group-note-receive:", err);
+      }
+    }
+
+    return res.status(201).json({ note: newNote });
+  } catch (err) {
+    console.error("❌ addGroupNote error:", err);
+    next(err);
+    return;
+  }
+};
+
 // ✅ ฟังก์ชันส่งข้อความแบบภาพ
 export const addImageMessage = async (req, res, next) => {
   try {

@@ -8,6 +8,7 @@ export default function GroupFiles({ groupId, onClose }) {
   const [note, setNote] = useState("");
   const [selectedFile, setSelectedFile] = useState(null);
   const [uploading, setUploading] = useState(false);
+  const [errorMsg, setErrorMsg] = useState("");
 
   // ✅ โหลดไฟล์ทั้งหมดในกลุ่ม
   const fetchFiles = async () => {
@@ -19,6 +20,8 @@ export default function GroupFiles({ groupId, onClose }) {
       setFiles(res.data);
     } catch (err) {
       console.error("❌ โหลดไฟล์กลุ่มล้มเหลว:", err);
+      const serverMsg = err?.response?.data?.error || err?.response?.data?.message;
+      setErrorMsg(serverMsg || "ไม่สามารถโหลดไฟล์กลุ่มได้");
     } finally {
       setLoading(false);
     }
@@ -46,13 +49,15 @@ export default function GroupFiles({ groupId, onClose }) {
           headers: { "Content-Type": "multipart/form-data" },
         }
       );
-      alert(res.data.message);
+        alert(res.data?.message || "อัปโหลดสำเร็จ");
       setNote("");
       setSelectedFile(null);
       fetchFiles(); // โหลดใหม่หลังอัปโหลด
     } catch (err) {
       console.error("❌ อัปโหลดล้มเหลว:", err);
-      alert("เกิดข้อผิดพลาดในการอัปโหลด");
+        // Show server message if available (e.g., 403 with reason)
+        const serverMsg = err?.response?.data?.error || err?.response?.data?.message;
+        alert(serverMsg || "เกิดข้อผิดพลาดในการอัปโหลด");
     } finally {
       setUploading(false);
     }
@@ -73,6 +78,13 @@ export default function GroupFiles({ groupId, onClose }) {
             ✖ ปิด
           </button>
         </div>
+
+        {/* Error banner when fetching files failed due to auth/permission */}
+        {errorMsg && (
+          <div className="mb-4 p-3 rounded bg-red-600 text-white">
+            {errorMsg}
+          </div>
+        )}
 
         {/* Upload Form */}
         <form

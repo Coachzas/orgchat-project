@@ -123,12 +123,24 @@ function GroupsList() {
 
           {/* ปุ่มสร้างกลุ่ม */}
           <div className="mt-6">
-            <button
-              onClick={() => setShowModal(true)}
-              className="bg-teal-light text-white px-4 py-2 rounded-xl text-sm hover:opacity-90 flex items-center gap-2"
-            >
-              ➕ สร้างแชทกลุ่ม
-            </button>
+            {(userInfo?.role === "admin" || userInfo?.role === "manager") ? (
+              <button
+                onClick={() => setShowModal(true)}
+                className="bg-teal-light text-white px-4 py-2 rounded-xl text-sm hover:opacity-90 flex items-center gap-2"
+              >
+                ➕ สร้างแชทกลุ่ม
+              </button>
+            ) : (
+              <div className="flex flex-col">
+                <button
+                  disabled
+                  className="bg-gray-500 text-white px-4 py-2 rounded-xl text-sm opacity-60 cursor-not-allowed flex items-center gap-2"
+                >
+                  ➕ สร้างแชทกลุ่ม
+                </button>
+                <p className="text-secondary text-xs mt-2">เฉพาะผู้ดูแล (admin) และผู้จัดการ (manager)</p>
+              </div>
+            )}
           </div>
         </div>
       </div>

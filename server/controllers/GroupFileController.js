@@ -22,7 +22,13 @@ export const uploadGroupFile = async (req, res) => {
   try {
     const { groupId } = req.params;
     const uploaderId = req.session.user?.id;
+    const uploaderRole = req.session.user?.role;
     const note = req.body.note || "";
+
+    // จำกัดสิทธิ์ฝากไฟล์ในกลุ่ม: admin และ manager เท่านั้น
+    if (!uploaderRole || !["admin", "manager"].includes(uploaderRole)) {
+      return res.status(403).json({ error: "ห้าม: เฉพาะ admin/manager เท่านั้นในการฝากไฟล์" });
+    }
 
     if (!req.file) return res.status(400).json({ error: "กรุณาเลือกไฟล์ก่อนอัปโหลด" });
     if (!groupId) return res.status(400).json({ error: "ไม่พบ groupId" });

@@ -1,4 +1,5 @@
 import prisma from "../utils/PrismaClient.js";
+import bcrypt from "bcrypt";
 
 /**
  * 🧩 ดึงรายชื่อผู้ใช้ทั้งหมด (เฉพาะ Admin เท่านั้น)
@@ -155,5 +156,53 @@ export const createGroupByAdmin = async (req, res) => {
   } catch (error) {
     console.error("❌ [AdminController] createGroupByAdmin:", error);
     res.status(500).json({ error: "ไม่สามารถสร้างกลุ่มได้" });
+  }
+};
+
+/**
+ * 👤 สร้างผู้ใช้โดย Admin
+ */
+export const createUserByAdmin = async (req, res) => {
+  try {
+    const { email, password, firstName, lastName, role = "employee", about = "", profilePicture = "/default-avatar.png" } = req.body;
+
+    // validation
+    if (!email || !password || !firstName || !lastName) {
+      return res.status(400).json({ error: "กรอกข้อมูลให้ครบถ้วน" });
+    }
+
+    const exist = await prisma.user.findUnique({ where: { email: email.trim().toLowerCase() } });
+    if (exist) return res.status(409).json({ error: "อีเมลนี้ถูกใช้งานแล้ว" });
+
+    const hashed = await bcrypt.hash(password, 10);
+    const newUser = await prisma.user.create({
+      data: {
+        email: email.trim().toLowerCase(),
+        password: hashed,
+        firstName: firstName.trim(),
+        lastName: lastName.trim(),
+        about,
+        profilePicture,
+        role,
+      },
+      select: {
+        id: true,
+        email: true,
+        firstName: true,
+        lastName: true,
+        about: true,
+        profilePicture: true,
+        role: true,
+      },
+    });
+
+    // broadcast event
+    const io = req.app.get("io");
+    if (io) io.emit("user-created", newUser);
+
+    return res.status(201).json({ message: "สร้างผู้ใช้สำเร็จ", user: newUser });
+  } catch (err) {
+    console.error("❌ createUserByAdmin error:", err);
+    return res.status(500).json({ error: "สร้างผู้ใช้ไม่สำเร็จ" });
   }
 };

@@ -1,16 +1,22 @@
 import express from "express";
-import { getGroupMessages } from "../controllers/MessageController.js";
+import { getGroupMessages, getGroupNotes, addGroupNote } from "../controllers/MessageController.js";
 import prisma from "../utils/PrismaClient.js";
 import { upload, uploadGroupFile, getGroupFiles } from "../controllers/GroupFileController.js";
 import { isAuthenticated } from "../middlewares/AuthMiddleware.js";
 
 const router = express.Router();
 
-// ✅ สร้างกลุ่มใหม่
-router.post("/create", async (req, res) => {
+// ✅ สร้างกลุ่มใหม่ (จำกัดเฉพาะ admin/manager)
+router.post("/create", isAuthenticated, async (req, res) => {
   try {
     console.log("📦 กลุ่มที่รับจาก client:", req.body);
     const { name, about, members } = req.body;
+
+    // ตรวจสิทธิ์: ต้องเป็น admin หรือ manager
+    const role = req.session?.user?.role;
+    if (!role || !["admin", "manager"].includes(role)) {
+      return res.status(403).json({ error: "ห้าม: เฉพาะ admin/manager เท่านั้น" });
+    }
 
     if (!name || !members || !Array.isArray(members) || members.length === 0) {
       return res.status(400).json({ error: "ชื่อกลุ่มและสมาชิกต้องระบุ" });
@@ -39,6 +45,12 @@ router.post("/create", async (req, res) => {
 
 // ✅ ดึงข้อความในกลุ่มทั้งหมด
 router.get("/get-group-messages/:groupId", getGroupMessages);
+
+// ✅ ดึงโน้ตของกลุ่ม (notes stored as messages with type = 'note')
+router.get("/:groupId/notes", isAuthenticated, getGroupNotes);
+
+// ✅ เพิ่มโน้ตในกลุ่ม (เฉพาะ admin)
+router.post("/:groupId/notes", isAuthenticated, addGroupNote);
 
 // ✅ ดึงรายการกลุ่มทั้งหมด
 router.get("/", async (req, res) => {

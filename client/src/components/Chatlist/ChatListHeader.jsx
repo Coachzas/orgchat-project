@@ -64,7 +64,7 @@ function ChatListHeader() {
       </div>
 
       {/* 🧭 ปุ่มควบคุม */}
-      <div className="flex gap-6">
+  <div className="flex gap-6">
         <BsFillChatLeftTextFill
           className="text-panel-header-icon cursor-pointer text-xl"
           title="แชทใหม่"
@@ -83,6 +83,16 @@ function ChatListHeader() {
           onClick={showContextMenu}
           id="context-opener"
         />
+        {/* ปุ่มไปยัง Admin Dashboard (เห็นเฉพาะ admin) */}
+        {userInfo?.role === "admin" && (
+          <button
+            onClick={() => router.push("/admin")}
+            className="bg-red-500 hover:bg-red-600 text-white px-3 py-1 rounded-md text-sm"
+            title="ไปยัง Admin Dashboard"
+          >
+            Admin Dashboard
+          </button>
+        )}
       </div>
 
       {isContextMenuVisible && (

@@ -162,6 +162,60 @@ export const getCurrentUser = async (req, res) => {
 };
 
 /* ----------------------------------------
+ CHANGE PASSWORD - ผู้ใช้เปลี่ยนรหัสผ่าน
+ ---------------------------------------- */
+export const changePassword = async (req, res, next) => {
+  try {
+    const userId = req.session?.user?.id;
+    const { currentPassword, newPassword } = req.body;
+
+    if (!userId) return res.status(401).json({ status: false, msg: "ยังไม่ได้เข้าสู่ระบบ" });
+    if (!currentPassword || !newPassword) return res.status(400).json({ status: false, msg: "ข้อมูลไม่ครบ" });
+    if (newPassword.length < 3) return res.status(400).json({ status: false, msg: "รหัสผ่านต้องอย่างน้อย 3 ตัวอักษร" });
+
+    const user = await prisma.user.findUnique({ where: { id: userId } });
+    if (!user) return res.status(404).json({ status: false, msg: "ไม่พบผู้ใช้" });
+
+    const match = await bcrypt.compare(currentPassword, user.password);
+    if (!match) return res.status(400).json({ status: false, msg: "รหัสปัจจุบันไม่ถูกต้อง" });
+
+    const hashed = await bcrypt.hash(newPassword, 10);
+    await prisma.user.update({ where: { id: userId }, data: { password: hashed } });
+
+    return res.status(200).json({ status: true, msg: "เปลี่ยนรหัสผ่านสำเร็จ" });
+  } catch (err) {
+    console.error("❌ changePassword error:", err);
+    return res.status(500).json({ status: false, msg: "ไม่สามารถเปลี่ยนรหัสผ่านได้" });
+  }
+};
+
+/* ----------------------------------------
+ UPDATE PROFILE PHOTO - อัปโหลดรูปโปรไฟล์
+ ---------------------------------------- */
+export const updateProfilePhoto = async (req, res, next) => {
+  try {
+    const userId = req.session?.user?.id;
+    if (!userId) return res.status(401).json({ status: false, msg: "ยังไม่ได้เข้าสู่ระบบ" });
+    if (!req.file) return res.status(400).json({ status: false, msg: "ยังไม่ได้อัปโหลดไฟล์" });
+
+    const fileUrl = `/uploads/images/${req.file.filename}`;
+    const updated = await prisma.user.update({
+      where: { id: userId },
+      data: { profilePicture: fileUrl },
+      select: { id: true, profilePicture: true, firstName: true, lastName: true, email: true, role: true },
+    });
+
+    // update session
+    req.session.user = { ...req.session.user, profilePicture: fileUrl };
+
+    return res.status(200).json({ status: true, msg: "อัปเดตรูปโปรไฟล์สำเร็จ", user: updated });
+  } catch (err) {
+    console.error("❌ updateProfilePhoto error:", err);
+    return res.status(500).json({ status: false, msg: "ไม่สามารถอัปเดตรูปได้" });
+  }
+};
+
+/* ----------------------------------------
  GET ALL USERS - ดึงผู้ใช้ทั้งหมด (group by ตัวอักษร)
 ---------------------------------------- */
 export const getAllUsers = async (req, res, next) => {

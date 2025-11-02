@@ -6,7 +6,8 @@ export const AUTH_ROUTE = `${HOST}/api/auth`;
 export const REGISTER_ROUTE = `${AUTH_ROUTE}/register`;
 export const LOGIN_ROUTE = `${AUTH_ROUTE}/login`;
 export const LOGOUT_ROUTE = `${AUTH_ROUTE}/logout`;
-export const CHECK_AUTH_ROUTE = `${AUTH_ROUTE}/check-auth`;
+// NOTE: server implements GET /api/auth/me to return current session user
+export const CHECK_AUTH_ROUTE = `${AUTH_ROUTE}/me`;
 
 // 📞 Token for Call
 export const GET_CALL_TOKEN = (userId) => `${AUTH_ROUTE}/generate-token/${userId}`;
@@ -32,6 +33,10 @@ export const GET_MESSAGES_ROUTE_1V1 = (meId, otherId) =>
 export const GET_GROUP_MESSAGES_ROUTE = (groupId) =>
   `${HOST}/api/groups/${groupId}/messages`;
 
+// Group notes (admin notes)
+export const GET_GROUP_NOTES_ROUTE = (groupId) => `${HOST}/api/groups/${groupId}/notes`;
+export const ADD_GROUP_NOTE_ROUTE = (groupId) => `${HOST}/api/groups/${groupId}/notes`;
+
 
 // ส่งข้อความแบบรูปภาพ
 export const ADD_IMAGE_MESSAGES_ROUTE = `${MESSAGE_ROUTE}/add-image-message`;
@@ -52,3 +57,10 @@ export const ADD_GROUP_ROUTE = `${HOST}/api/groups/create`;
 // 👑 ADMIN ROLE ROUTES (optional)
 const USER_ROUTE = `${HOST}/api/users`;
 export const CHANGE_USER_ROLE_ROUTE = (userId) => `${USER_ROUTE}/role/${userId}`;
+
+// Admin create user (server admin routes)
+export const ADMIN_CREATE_USER_ROUTE = `${HOST}/api/admin/users`;
+
+// Auth extras: change password and update profile pic
+export const CHANGE_PASSWORD_ROUTE = `${AUTH_ROUTE}/change-password`;
+export const UPDATE_PROFILE_PIC_ROUTE = `${AUTH_ROUTE}/profile-photo`;
