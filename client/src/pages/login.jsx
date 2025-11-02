@@ -91,10 +91,7 @@ function Login() {
         </button>
 
         <span className="text-sm text-gray-400">
-          ยังไม่มีบัญชีใช่ไหม?{" "}
-          <span onClick={() => router.push("/register")} className="text-blue-500 cursor-pointer">
-            ลงทะเบียน
-          </span>
+          การลงทะเบียนถูกปิดใช้งาน — กรุณาติดต่อผู้ดูแลระบบเพื่อขอบัญชี
         </span>
       </div>
     </div>
