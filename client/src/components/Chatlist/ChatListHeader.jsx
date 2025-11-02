@@ -5,6 +5,7 @@ import { BsFillChatLeftTextFill, BsThreeDotsVertical } from "react-icons/bs";
 import { reducerCases } from "@/context/constants";
 import { useRouter } from "next/router";
 import ContextMenu from "../common/ContextMenu";
+import ProfileModal from "@/components/Profile/ProfileModal";
 import { FiUsers } from "react-icons/fi";
 
 function ChatListHeader() {
@@ -13,6 +14,7 @@ function ChatListHeader() {
 
   const [contextMenuCoordinates, setContextMenuCoordinates] = useState({ x: 0, y: 0 });
   const [isContextMenuVisible, setIsContextMenuVisible] = useState(false);
+  const [showProfileModal, setShowProfileModal] = useState(false);
 
   const showContextMenu = (e) => {
     e.preventDefault();
@@ -25,7 +27,7 @@ function ChatListHeader() {
       name: "แก้ไขโปรไฟล์",
       callback: () => {
         setIsContextMenuVisible(false);
-        router.push("/profile");
+        setShowProfileModal(true);
       },
     },
     {
@@ -109,6 +111,10 @@ function ChatListHeader() {
           contextMenu={isContextMenuVisible}
           setContextMenu={setIsContextMenuVisible}
         />
+      )}
+
+      {showProfileModal && (
+        <ProfileModal open={showProfileModal} onClose={() => setShowProfileModal(false)} />
       )}
     </div>
   );
