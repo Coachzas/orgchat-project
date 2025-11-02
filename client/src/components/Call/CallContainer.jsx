@@ -8,7 +8,7 @@ const Container = dynamic(() => import("./Container"), { ssr: false });
 function CallContainer() {
   const [{ voiceCall, videoCall, socket, userInfo }, dispatch] = useStateProvider();
 
-  const activeCall = voiceCall || videoCall; // ✅ ใช้ตัวไหนก็ได้ที่มีการโทรอยู่
+  const activeCall = voiceCall || videoCall; //  ใช้ตัวไหนก็ได้ที่มีการโทรอยู่
 
   useEffect(() => {
     console.log("🎬 CallContainer mount");
@@ -22,7 +22,7 @@ function CallContainer() {
     const eventType =
       activeCall.callType === "voice" ? "outgoing-voice-call" : "outgoing-video-call";
 
-    // ✅ โทรออก
+    //  โทรออก
     if (activeCall.type === "out-going") {
       console.log("📤 [Caller] โทรออกไปยัง:", activeCall.id);
       socket.current.emit(eventType, {
@@ -38,7 +38,7 @@ function CallContainer() {
       });
     }
 
-    // ✅ เมื่อได้รับ event “accept-call” จาก server
+    //  เมื่อได้รับ event “accept-call” จาก server
     socket.current.on("accept-call", ({ roomId }) => {
       console.log("📲 [Caller] ได้รับ event accept-call:", roomId);
 
@@ -55,7 +55,7 @@ function CallContainer() {
       }
     });
 
-    // ✅ เมื่อผู้รับปฏิเสธสาย
+    //  เมื่อผู้รับปฏิเสธสาย
     socket.current.on("reject-call", () => {
       console.log("📴 [Caller] สายถูกปฏิเสธโดยผู้รับ");
       dispatch({ type: reducerCases.END_CALL });

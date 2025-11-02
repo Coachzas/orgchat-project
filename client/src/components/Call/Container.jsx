@@ -25,7 +25,7 @@ function Container({ data }) {
     if (!data) return;
 
     if (data.type === "out-going" && socket?.current) {
-      // ✅ รออีกฝั่งกดรับสายก่อนถึงจะเปลี่ยน callAccepted = true
+      //  รออีกฝั่งกดรับสายก่อนถึงจะเปลี่ยน callAccepted = true
       const onAccept = ({ roomId }) => {
         console.log("📞 อีกฝั่งกดรับสายแล้ว roomId:", roomId);
         setCallAccepted(true);
@@ -35,7 +35,7 @@ function Container({ data }) {
       return () => socket.current.off("accept-call", onAccept);
     }
 
-    // ✅ ฝั่งผู้รับสาย (incoming) เท่านั้นที่ setCallAccepted(true) ทันที
+    //  ฝั่งผู้รับสาย (incoming) เท่านั้นที่ setCallAccepted(true) ทันที
     if (data.type === "in-coming") {
       const timer = setTimeout(() => setCallAccepted(true), 200);
       return () => clearTimeout(timer);
@@ -49,7 +49,7 @@ function Container({ data }) {
       if (!callAccepted || !userInfo?.id) return;
       try {
         const res = await axios.get(GET_CALL_TOKEN(userInfo.id), {
-          withCredentials: true, // ✅ สำคัญถ้าใช้ cookie
+          withCredentials: true, //  สำคัญถ้าใช้ cookie
         });
         setToken(res.data?.token);
       } catch (err) {

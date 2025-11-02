@@ -2,8 +2,6 @@ generator client {
   provider = "prisma-client-js"
 }
 
-
-
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
@@ -50,18 +48,17 @@ model Message {
   senderId      Int
   receiver      User?         @relation("receivedMessages", fields: [receiverId], references: [id])
   receiverId    Int?
-  group         Group?        @relation(fields: [groupId], references: [id])
+
+  // cascade ลบข้อความในกลุ่มเมื่อกลุ่มถูกลบ
+  group         Group?        @relation(fields: [groupId], references: [id], onDelete: Cascade)
   groupId       Int?
 
   type          MessageType   @default(text)
-
-  // ข้อความธรรมดา (optional เผื่อเป็นข้อความเปล่า/ไฟล์อย่างเดียว)
   message       String?
   fileUrl       String?
   fileName      String?
   mimeType      String?
   fileSize      Int?
-
   messageStatus MessageStatus @default(sent)
   createdAt     DateTime      @default(now())
 
@@ -72,32 +69,32 @@ model Message {
 model Group {
   id         Int            @id @default(autoincrement())
   name       String
-  about      String? 
+  about      String?
   members    GroupMember[]
   messages   Message[]
-  createdAt  DateTime       @default(now())
   files      GroupFile[]
+  createdAt  DateTime       @default(now())
 }
 
 model GroupMember {
   id       Int    @id @default(autoincrement())
-  user     User   @relation(fields: [userId], references: [id])
+  user     User   @relation(fields: [userId], references: [id], onDelete: Cascade)
   userId   Int
-  group    Group  @relation(fields: [groupId], references: [id])
+  // cascade เมื่อ group ถูกลบ
+  group    Group  @relation(fields: [groupId], references: [id], onDelete: Cascade)
   groupId  Int
 }
 
 model GroupFile {
   id          Int      @id @default(autoincrement())
-  group       Group    @relation(fields: [groupId], references: [id])
+  // cascade เมื่อ group ถูกลบ
+  group       Group    @relation(fields: [groupId], references: [id], onDelete: Cascade)
   groupId     Int
-  uploader    User     @relation(fields: [uploaderId], references: [id])
+  uploader    User     @relation(fields: [uploaderId], references: [id], onDelete: Cascade)
   uploaderId  Int
-
   fileUrl     String
   fileName    String
   fileType    String?
-  note        String?     // ข้อความแนบ เช่น "เอกสารประชุม" หรือ "บันทึก"
-  createdAt   DateTime    @default(now())
+  note        String?
+  createdAt   DateTime @default(now())
 }
-

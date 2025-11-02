@@ -19,7 +19,7 @@ function ChatListItem({ data, isContactsPage = false }) {
         : data.senderId
       : data.id;
 
-    // ✅ ป้องกัน undefined firstName / lastName โดยแยกจาก name
+    //  ป้องกัน undefined firstName / lastName โดยแยกจาก name
     const safeFirstName = data.firstName || data.name?.split(" ")[0] || "";
     const safeLastName = data.lastName || data.name?.split(" ")[1] || "";
 
@@ -42,13 +42,13 @@ function ChatListItem({ data, isContactsPage = false }) {
 
     console.log("💬 dispatch user:", chatUser);
 
-    // ✅ เคลียร์ group ก่อนเปิดแชท 1-1
+    //  เคลียร์ group ก่อนเปิดแชท 1-1
     dispatch({ type: reducerCases.SET_CURRENT_GROUP, group: undefined });
 
-    // ✅ ตั้งค่าผู้ใช้ปัจจุบัน
+    //  ตั้งค่าผู้ใช้ปัจจุบัน
     dispatch({ type: reducerCases.CHANGE_CURRENT_CHAT_USER, user: chatUser });
 
-    // ✅ ปิด contacts page ถ้ามี
+    //  ปิด contacts page ถ้ามี
     if (isContactsPage) {
       dispatch({ type: reducerCases.SET_ALL_CONTACTS_PAGE, payload: false });
     }

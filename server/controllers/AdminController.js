@@ -32,7 +32,7 @@ export const updateUserRole = async (req, res) => {
     const { id } = req.params;
     const { role } = req.body;
 
-    // ✅ ตรวจสอบ role ให้ถูกต้อง
+    //  ตรวจสอบ role ให้ถูกต้อง
     if (!["employee", "admin", "manager"].includes(role)) {
       return res.status(400).json({ error: "role ไม่ถูกต้อง" });
     }
@@ -49,7 +49,7 @@ export const updateUserRole = async (req, res) => {
       },
     });
 
-    // ✅ Broadcast event เรียลไทม์
+    //  Broadcast event เรียลไทม์
     const io = req.app.get("io");
     if (io) {
       io.emit("role-updated", {
@@ -93,7 +93,7 @@ export const createAnnouncement = async (req, res) => {
       },
     });
 
-    // ✅ Broadcast ไปทุก client
+    //  Broadcast ไปทุก client
     const io = req.app.get("io");
     if (io) {
       io.emit("announcement", newAnnouncement);
@@ -119,7 +119,7 @@ export const createGroupByAdmin = async (req, res) => {
     const creatorRole = req.session.user?.role;
     const creatorId = req.session.user?.id;
 
-    // ✅ ตรวจสอบสิทธิ์ก่อนสร้างกลุ่ม
+    //  ตรวจสอบสิทธิ์ก่อนสร้างกลุ่ม
     if (!["admin", "manager", "employee"].includes(creatorRole)) {
       return res.status(403).json({ error: "คุณไม่มีสิทธิ์สร้างกลุ่ม" });
     }
@@ -143,9 +143,9 @@ export const createGroupByAdmin = async (req, res) => {
       include: { members: { include: { user: true } } },
     });
 
-    console.log(`✅ [AdminController] ${creatorRole} สร้างกลุ่ม "${name}" สำเร็จ`);
+    console.log(` [AdminController] ${creatorRole} สร้างกลุ่ม "${name}" สำเร็จ`);
 
-    // ✅ แจ้ง event สร้างกลุ่มใหม่แบบเรียลไทม์
+    //  แจ้ง event สร้างกลุ่มใหม่แบบเรียลไทม์
     const io = req.app.get("io");
     if (io) io.emit("group-created", newGroup);
 

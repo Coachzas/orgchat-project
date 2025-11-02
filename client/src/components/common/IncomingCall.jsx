@@ -8,11 +8,11 @@ function IncomingCall() {
 
   if (!incomingVoiceCall) return null;
 
-  // ✅ เมื่อผู้ใช้กด "รับสาย"
+  //  เมื่อผู้ใช้กด "รับสาย"
   const acceptCall = () => {
     if (!socket?.current || !incomingVoiceCall) return;
 
-    console.log("✅ [Receiver] รับสายจาก:", incomingVoiceCall.id);
+    console.log(" [Receiver] รับสายจาก:", incomingVoiceCall.id);
 
     // 🔹 แจ้ง server ว่าผู้รับกดรับสาย
     socket.current.emit("accept-incoming-call", {

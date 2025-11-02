@@ -4,7 +4,7 @@ import { useStateProvider } from "@/context/StateContext";
 import { reducerCases } from "@/context/constants";
 import GroupModal from "./GroupModal";
 import axios from "axios";
-import { GET_GROUP_MESSAGES_ROUTE } from "@/utils/ApiRoutes"; // ✅ เพิ่ม import ที่หายไป
+import { GET_GROUP_MESSAGES_ROUTE } from "@/utils/ApiRoutes"; //  เพิ่ม import ที่หายไป
 
 function GroupsList() {
   const [searchTerm, setSearchTerm] = useState("");
@@ -13,24 +13,34 @@ function GroupsList() {
   const [showModal, setShowModal] = useState(false);
   const [{ userInfo, socket }, dispatch] = useStateProvider();
 
-  // ✅ โหลดรายการกลุ่ม
+  //  โหลดรายการกลุ่ม (และกรองให้แสดงเฉพาะกลุ่มที่ user เป็นสมาชิก)
   useEffect(() => {
     const fetchGroups = async () => {
       try {
-        const res = await axios.get("http://localhost:3005/api/groups", {
-          withCredentials: true,
-        });
-        console.log("📦 กลุ่มทั้งหมดที่ดึงได้:", res.data);
-        setGroups(res.data);
-        setFilteredGroups(res.data);
+        const res = await axios.get(`/api/groups`, { withCredentials: true });
+        const all = res.data || [];
+        // หากไม่มี userInfo ให้เก็บทั้งหมดก่อน (เพื่อไม่ให้ error)
+        if (!userInfo?.id) {
+          setGroups(all);
+          setFilteredGroups(all);
+          return;
+        }
+
+        const myGroups = all.filter((g) =>
+          Array.isArray(g.members) &&
+          g.members.some((m) => Number(m.userId ?? m.user?.id ?? m.userId) === Number(userInfo.id))
+        );
+
+        setGroups(myGroups);
+        setFilteredGroups(myGroups);
       } catch (err) {
         console.error("❌ เกิดข้อผิดพลาดในการดึงกลุ่ม:", err);
       }
     };
     fetchGroups();
-  }, []);
+  }, [userInfo]);
 
-  // ✅ ฟิลเตอร์กลุ่มตามคำค้น
+  //  ฟิลเตอร์กลุ่มตามคำค้น
   useEffect(() => {
     if (searchTerm.length) {
       const filtered = groups.filter((group) =>
@@ -46,7 +56,7 @@ function GroupsList() {
     dispatch({ type: reducerCases.SET_GROUPS_PAGE, payload: false });
   };
 
-  // ✅ เมื่อเลือกกลุ่ม
+  //  เมื่อเลือกกลุ่ม
   const handleSelectGroup = async (group) => {
     console.log("🔥 คลิกเข้ากลุ่ม:", group.name, "(ID:", group.id, ")");
     try {
@@ -66,10 +76,10 @@ function GroupsList() {
       dispatch({ type: reducerCases.SET_MESSAGES, messages: res.data });
       dispatch({ type: reducerCases.SET_GROUPS_PAGE, payload: false });
 
-      // ✅ เข้าห้อง group ด้วย socket.io
+      //  เข้าห้อง group ด้วย socket.io
       if (socket?.current) {
         socket.current.emit("join-group", group.id);
-        console.log(`✅ เข้าห้อง group_${group.id} สำเร็จ`);
+        console.log(` เข้าห้อง group_${group.id} สำเร็จ`);
       }
     } catch (err) {
       console.error("❌ โหลดข้อความกลุ่มไม่สำเร็จ:", err);

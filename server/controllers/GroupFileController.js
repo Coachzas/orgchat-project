@@ -25,6 +25,9 @@ export const uploadGroupFile = async (req, res) => {
     const uploaderRole = req.session.user?.role;
     const note = req.body.note || "";
 
+    // Debug log to help diagnose 403 permission issues
+    console.log("[uploadGroupFile] uploaderId:", uploaderId, "uploaderRole:", uploaderRole, "groupId:", groupId);
+
     // จำกัดสิทธิ์ฝากไฟล์ในกลุ่ม: admin และ manager เท่านั้น
     if (!uploaderRole || !["admin", "manager"].includes(uploaderRole)) {
       return res.status(403).json({ error: "ห้าม: เฉพาะ admin/manager เท่านั้นในการฝากไฟล์" });

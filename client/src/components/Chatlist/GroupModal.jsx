@@ -3,14 +3,20 @@ import { IoMdClose } from "react-icons/io";
 import { useStateProvider } from "@/context/StateContext";
 import axios from "axios";
 import { reducerCases } from "@/context/constants";
-import { ADD_GROUP_ROUTE } from "@/utils/ApiRoutes";
+import { ADD_GROUP_ROUTE, ADMIN_USERS_ROUTE } from "@/utils/ApiRoutes";
+import { useEffect } from "react";
 
 function GroupModal({ onClose }) {
   const [groupName, setGroupName] = useState("");
   const [groupDescription, setGroupDescription] = useState("");
   const [selectedMembers, setSelectedMembers] = useState([]);
 
-  const [{ userContacts, userInfo, socket }, dispatch] = useStateProvider();
+  const [{ userContacts = [], userInfo, socket }, dispatch] = useStateProvider();
+  const [usersList, setUsersList] = useState(userContacts || []);
+
+  useEffect(() => {
+    setUsersList(userContacts || []);
+  }, [userContacts]);
 
   const toggleMember = (userId) => {
     if (selectedMembers.includes(userId)) {
@@ -39,20 +45,38 @@ function GroupModal({ onClose }) {
 
       const newGroup = response.data;
 
-      console.log("✅ Group created:", newGroup);
+      console.log(" Group created:", newGroup);
 
-      // ✅ เข้าห้องกลุ่มใหม่ผ่าน socket
+      //  เข้าห้องกลุ่มใหม่ผ่าน socket
       socket?.current?.emit("join-group", newGroup.id);
 
-      // ✅ ตั้งกลุ่มปัจจุบันใน state (จะให้ ChatContainer แสดงแชทกลุ่มแทน 1-1)
+      //  ตั้งกลุ่มปัจจุบันใน state (จะให้ ChatContainer แสดงแชทกลุ่มแทน 1-1)
       dispatch({ type: reducerCases.SET_CURRENT_GROUP, group: newGroup });
       dispatch({ type: reducerCases.SET_MESSAGES, messages: [] });
 
-      // ✅ ปิด modal
+      //  ปิด modal
       onClose();
     } catch (err) {
       console.error("❌ Failed to create group:", err.response?.data || err);
       alert("สร้างกลุ่มไม่สำเร็จ");
+    }
+  };
+
+  // นำเข้าทั้งหมด: admin/manager -> ดึงจาก ADMIN_USERS_ROUTE, user -> ใช้ userContacts
+  const importAllUsers = async () => {
+    try {
+      if (userInfo?.role === "admin" || userInfo?.role === "manager") {
+        const res = await axios.get(ADMIN_USERS_ROUTE, { withCredentials: true });
+        const all = res.data || [];
+        setUsersList(all);
+        setSelectedMembers(all.map((u) => u.id));
+      } else {
+        setUsersList(userContacts || []);
+        setSelectedMembers((userContacts || []).map((u) => u.id));
+      }
+    } catch (err) {
+      console.error("❌ นำเข้าผู้ใช้ทั้งหมดล้มเหลว:", err);
+      alert("ไม่สามารถนำเข้าผู้ใช้ทั้งหมดได้");
     }
   };
 
@@ -85,9 +109,30 @@ function GroupModal({ onClose }) {
 
         <div className="mt-6">
           <h3 className="text-sm font-semibold mb-2">เพิ่มสมาชิก</h3>
+
+          <div className="flex gap-2 mb-2">
+            <button onClick={importAllUsers} className="px-3 py-1 bg-blue-600 rounded text-white text-sm">
+              นำเข้าทั้งหมด
+            </button>
+            <small className="text-secondary text-xs self-center">
+              (admin/manager จะนำเข้าทุกคนจากระบบ)
+            </small>
+          </div>
+
           <div className="max-h-40 overflow-y-auto space-y-1">
-            {userContacts.map((user) => (
+            {usersList.map((user) => (
               <label key={user.id} className="flex items-center gap-2">
+                <img
+                  src={
+                    user.role === "admin"
+                      ? "/avatars/3.png"
+                      : user.role === "manager"
+                      ? "/avatars/2.png"
+                      : user.profilePicture || "/default-avatar.png"
+                  }
+                  alt="role"
+                  className="h-6 w-6 rounded-full"
+                />
                 <input
                   type="checkbox"
                   checked={selectedMembers.includes(user.id)}

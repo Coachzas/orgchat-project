@@ -6,7 +6,7 @@ import { isAuthenticated } from "../middlewares/AuthMiddleware.js";
 
 const router = express.Router();
 
-// ✅ สร้างกลุ่มใหม่ (จำกัดเฉพาะ admin/manager)
+//  สร้างกลุ่มใหม่ (จำกัดเฉพาะ admin/manager)
 router.post("/create", isAuthenticated, async (req, res) => {
   try {
     console.log("📦 กลุ่มที่รับจาก client:", req.body);
@@ -35,7 +35,7 @@ router.post("/create", isAuthenticated, async (req, res) => {
       },
     });
 
-    console.log("✅ สร้างกลุ่มสำเร็จ:", group.name);
+    console.log(" สร้างกลุ่มสำเร็จ:", group.name);
     res.json(group);
   } catch (error) {
     console.error("❌ เกิดข้อผิดพลาดในการสร้างกลุ่ม:", error);
@@ -43,16 +43,16 @@ router.post("/create", isAuthenticated, async (req, res) => {
   }
 });
 
-// ✅ ดึงข้อความในกลุ่มทั้งหมด
+//  ดึงข้อความในกลุ่มทั้งหมด
 router.get("/get-group-messages/:groupId", getGroupMessages);
 
-// ✅ ดึงโน้ตของกลุ่ม (notes stored as messages with type = 'note')
+//  ดึงโน้ตของกลุ่ม (notes stored as messages with type = 'note')
 router.get("/:groupId/notes", isAuthenticated, getGroupNotes);
 
-// ✅ เพิ่มโน้ตในกลุ่ม (เฉพาะ admin)
+//  เพิ่มโน้ตในกลุ่ม (เฉพาะ admin)
 router.post("/:groupId/notes", isAuthenticated, addGroupNote);
 
-// ✅ ดึงรายการกลุ่มทั้งหมด
+//  ดึงรายการกลุ่มทั้งหมด
 router.get("/", async (req, res) => {
   try {
     const groups = await prisma.group.findMany({
@@ -65,7 +65,7 @@ router.get("/", async (req, res) => {
   }
 });
 
-// ✅ เข้าร่วมกลุ่ม
+//  เข้าร่วมกลุ่ม
 router.post("/:groupId/join", async (req, res) => {
   try {
     const { groupId } = req.params;
@@ -87,7 +87,7 @@ router.post("/:groupId/join", async (req, res) => {
   }
 });
 
-// ✅ ออกจากกลุ่ม
+//  ออกจากกลุ่ม
 router.post("/:groupId/leave", async (req, res) => {
   try {
     const { groupId } = req.params;
@@ -104,7 +104,7 @@ router.post("/:groupId/leave", async (req, res) => {
   }
 });
 
-// ✅ ดึงข้อความในกลุ่ม
+//  ดึงข้อความในกลุ่ม
 router.get("/:groupId/messages", async (req, res) => {
   try {
     const { groupId } = req.params;

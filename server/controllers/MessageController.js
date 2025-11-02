@@ -2,7 +2,7 @@ import fs from "fs";
 import path from "path";
 import prisma from "../utils/PrismaClient.js";
 
-// ✅ ตรวจสอบและสร้างโฟลเดอร์อัปโหลด (ภาพ/เสียง)
+//  ตรวจสอบและสร้างโฟลเดอร์อัปโหลด (ภาพ/เสียง)
 const ensureUploadsFolder = () => {
   const uploadDir = path.join("uploads", "images");
   if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir, { recursive: true });
@@ -12,7 +12,7 @@ const ensureAudioUploadsFolder = () => {
   if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir, { recursive: true });
 };
 
-// ✅ ฟังก์ชันส่งข้อความปกติ (1-1)
+//  ฟังก์ชันส่งข้อความปกติ (1-1)
 export const addMessage = async (req, res, next) => {
   try {
     const { message, from, to } = req.body;
@@ -53,7 +53,7 @@ export const addMessage = async (req, res, next) => {
   }
 };
 
-// ✅ ดึงข้อความระหว่างผู้ใช้สองคน
+//  ดึงข้อความระหว่างผู้ใช้สองคน
 export const getMessages = async (req, res, next) => {
   try {
     const { from, to } = req.params;
@@ -157,7 +157,7 @@ export const addGroupNote = async (req, res, next) => {
   }
 };
 
-// ✅ ฟังก์ชันส่งข้อความแบบภาพ
+//  ฟังก์ชันส่งข้อความแบบภาพ
 export const addImageMessage = async (req, res, next) => {
   try {
     ensureUploadsFolder();
@@ -210,7 +210,7 @@ export const addImageMessage = async (req, res, next) => {
   }
 };
 
-// ✅ ฟังก์ชันส่งข้อความแบบเสียง
+//  ฟังก์ชันส่งข้อความแบบเสียง
 export const addAudioMessage = async (req, res, next) => {
   try {
     ensureAudioUploadsFolder();
@@ -260,7 +260,7 @@ export const addAudioMessage = async (req, res, next) => {
   }
 };
 
-// ✅ ฟังก์ชันดึงรายชื่อผู้ติดต่อพร้อมข้อความล่าสุด
+//  ฟังก์ชันดึงรายชื่อผู้ติดต่อพร้อมข้อความล่าสุด
 export const getInitialContactswithMessages = async (req, res, next) => {
   try {
     const userId = parseInt(req.params.from);
@@ -340,7 +340,7 @@ export const getInitialContactswithMessages = async (req, res, next) => {
   }
 };
 
-// ✅ ฟังก์ชันส่งข้อความในกลุ่ม
+//  ฟังก์ชันส่งข้อความในกลุ่ม
 export const addGroupMessage = async (req, res, next) => {
   try {
     const { from, groupId, message, type } = req.body;
@@ -357,7 +357,7 @@ export const addGroupMessage = async (req, res, next) => {
       include: { sender: true },
     });
 
-    // ✅ ส่งข้อความ real-time ผ่าน socket (ใช้ global.io ซึ่งเป็น instance ของ socket.io)
+    //  ส่งข้อความ real-time ผ่าน socket (ใช้ global.io ซึ่งเป็น instance ของ socket.io)
     if (global.io) {
       try {
         global.io.to(`group_${groupId}`).emit("group-message-receive", {

@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState } from "react";
 import ChatList from "./Chatlist/ChatList";
 import Empty from "./Empty";
 import axios from "axios";
-import { HOST, GET_MESSAGES_ROUTE_1V1 } from "@/utils/ApiRoutes";
+import { SOCKET_HOST, CHECK_AUTH_ROUTE, GET_MESSAGES_ROUTE_1V1 } from "@/utils/ApiRoutes";
 import { useRouter } from "next/router";
 import { useStateProvider } from "@/context/StateContext";
 import { reducerCases } from "@/context/constants";
@@ -37,7 +37,7 @@ function Main() {
     const checkSession = async () => {
       try {
         if (!userInfo) {
-          const res = await axios.get(`${HOST}/api/auth/me`, { withCredentials: true });
+          const res = await axios.get(CHECK_AUTH_ROUTE, { withCredentials: true });
           if (res?.data?.user) {
             dispatch({ type: reducerCases.SET_USER_INFO, userInfo: res.data.user });
           }
@@ -62,11 +62,12 @@ function Main() {
   // 🔹 เชื่อมต่อ socket.io และฟัง event ทั้งหมด (role, message)
   useEffect(() => {
     if (userInfo && !socket.current) {
-      socket.current = io(HOST, { withCredentials: true });
+      // Connect directly to backend socket host so socket.io connects to the server (not Next dev server)
+      socket.current = io(SOCKET_HOST, { withCredentials: true });
       socket.current.emit("add-user", userInfo.id);
       dispatch({ type: reducerCases.SET_SOCKET, socket });
 
-      // ✅ ฟัง event อัปเดต role (เรียลไทม์)
+      //  ฟัง event อัปเดต role (เรียลไทม์)
       socket.current.on("role-updated", (data) => {
         console.log("📡 [Main] role-updated:", data);
         if (userInfo?.id === data.id) {
@@ -78,7 +79,7 @@ function Main() {
         }
       });
 
-      // ✅ ฟัง event รับข้อความแบบเรียลไทม์ (1-1 messages)
+      //  ฟัง event รับข้อความแบบเรียลไทม์ (1-1 messages)
       socket.current.on("msg-receive", ({ message }) => {
         console.log("📨 ได้รับข้อความใหม่จาก socket:", message);
         // Accept all msg-receive events (including messages sent by this user) because server is authoritative and emits saved messages for both sender and recipient.
@@ -88,7 +89,7 @@ function Main() {
         });
       });
 
-      // ✅ cleanup ป้องกัน event ซ้ำ
+      //  cleanup ป้องกัน event ซ้ำ
       return () => {
         if (socket.current) {
           socket.current.off("role-updated");
@@ -152,7 +153,7 @@ function Main() {
       });
     });
 
-    // ✅ cleanup
+    //  cleanup
     return () => {
       if (socket.current) {
         socket.current.off("incoming-voice-call");

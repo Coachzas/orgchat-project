@@ -135,9 +135,7 @@ function CaptureAudio({ onChange }) {
 
       if (response.status === 201) {
         const messageRaw = response.data.message;
-        const audioUrl = messageRaw.startsWith("http")
-          ? messageRaw
-          : `http://localhost:3005${messageRaw}`;
+        const audioUrl = messageRaw.startsWith("http") ? messageRaw : `${messageRaw}`;
 
         // server controller will broadcast the saved audio message; no client socket emit
         handleDelete();

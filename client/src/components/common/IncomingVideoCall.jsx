@@ -8,10 +8,10 @@ function IncomingVideoCall() {
 
   if (!incomingVideoCall) return null;
 
-  // ✅ รับสาย
+  //  รับสาย
   const acceptCall = () => {
     if (!socket?.current || !incomingVideoCall) return;
-    console.log("✅ [Receiver] รับสายวิดีโอจาก:", incomingVideoCall.id);
+    console.log(" [Receiver] รับสายวิดีโอจาก:", incomingVideoCall.id);
 
     // แจ้ง server ว่าผู้รับกดรับสาย
     socket.current.emit("accept-incoming-call", {

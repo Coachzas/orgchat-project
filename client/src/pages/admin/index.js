@@ -4,7 +4,7 @@ import { useStateProvider } from "@/context/StateContext";
 import { reducerCases } from "@/context/constants";
 import axios from "axios";
 import { io } from "socket.io-client";
-import { ADMIN_CREATE_USER_ROUTE } from "@/utils/ApiRoutes";
+import { ADMIN_CREATE_USER_ROUTE, ADMIN_USERS_ROUTE, SOCKET_HOST } from "@/utils/ApiRoutes";
 
 export default function AdminDashboard() {
   const [users, setUsers] = useState([]);
@@ -18,7 +18,7 @@ export default function AdminDashboard() {
   // โหลดข้อมูลผู้ใช้ทั้งหมด
   useEffect(() => {
     axios
-      .get("http://localhost:3005/api/admin/users", { withCredentials: true })
+      .get(ADMIN_USERS_ROUTE, { withCredentials: true })
       .then((res) => {
         setUsers(res.data);
         setLoading(false);
@@ -30,9 +30,9 @@ export default function AdminDashboard() {
       });
   }, []);
 
-  // ✅ เชื่อมต่อ Socket.IO (เรียลไทม์)
+  //  เชื่อมต่อ Socket.IO (เรียลไทม์)
   useEffect(() => {
-    socket.current = io("http://localhost:3005", {
+    socket.current = io(SOCKET_HOST, {
       withCredentials: true,
     });
 
@@ -59,7 +59,7 @@ export default function AdminDashboard() {
     try {
       setUpdatingId(id);
       const res = await axios.put(
-        `http://localhost:3005/api/admin/users/${id}/role`,
+        `${ADMIN_USERS_ROUTE}/${id}/role`,
         { role: newRole },
         { withCredentials: true }
       );

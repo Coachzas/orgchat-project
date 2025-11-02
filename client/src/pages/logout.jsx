@@ -3,7 +3,7 @@ import { useStateProvider } from "@/context/StateContext";
 import { useRouter } from "next/router";
 import { useEffect } from "react";
 import axios from "axios";
-import { HOST } from "@/utils/ApiRoutes";
+import { LOGOUT_ROUTE } from "@/utils/ApiRoutes";
 
 function LogoutPage() {
   const [{ socket, userInfo }, dispatch] = useStateProvider();
@@ -16,8 +16,8 @@ function LogoutPage() {
           socket.current.emit("signout", userInfo.id);
         }
 
-        //  ลบ session ใน backend (ถ้ามี route /logout)
-        await axios.post(`${HOST}/api/auth/logout`, {}, { withCredentials: true });
+  //  ลบ session ใน backend (call central logout route)
+  await axios.post(LOGOUT_ROUTE, {}, { withCredentials: true });
 
         //  เคลียร์ context frontend
         dispatch({ type: reducerCases.SET_USER_INFO, userInfo: null });

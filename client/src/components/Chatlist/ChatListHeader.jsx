@@ -57,7 +57,7 @@ function ChatListHeader() {
         />
         <div className="flex flex-col overflow-hidden">
           <span className="text-primary-strong text-sm font-semibold truncate">
-            {/* ✅ ป้องกัน undefined firstName/lastName */}
+            {/*  ป้องกัน undefined firstName/lastName */}
             {userInfo?.firstName || userInfo?.name || "ไม่ระบุ"}{" "}
             {userInfo?.lastName || ""}
             {userInfo?.role && (

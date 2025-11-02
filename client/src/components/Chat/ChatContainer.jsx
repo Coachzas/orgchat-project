@@ -32,7 +32,7 @@ function ChatContainer() {
   const [loading, setLoading] = useState(false);
   const [showAdminNotes, setShowAdminNotes] = useState(false);
 
-  // ✅ เพิ่มผู้ใช้เข้า online list เมื่อ socket เชื่อมต่อ
+  //  เพิ่มผู้ใช้เข้า online list เมื่อ socket เชื่อมต่อ
   useEffect(() => {
     if (socket?.current && userInfo?.id) {
       socket.current.emit("add-user", userInfo.id);
@@ -40,7 +40,7 @@ function ChatContainer() {
     }
   }, [socket, userInfo]);
 
-  // ✅ เข้าห้องกลุ่ม (และออกจากห้องเก่า)
+  //  เข้าห้องกลุ่ม (และออกจากห้องเก่า)
   useEffect(() => {
     if (socket?.current) {
       if (currentGroup) {
@@ -51,7 +51,7 @@ function ChatContainer() {
     }
   }, [socket, currentGroup]);
 
-  // ✅ โหลดข้อความกลุ่ม (ถ้าอยู่ในกลุ่ม)
+  //  โหลดข้อความกลุ่ม (ถ้าอยู่ในกลุ่ม)
   useEffect(() => {
     if (!currentGroup || currentChatUser) return;
     setLoading(true);
@@ -68,7 +68,7 @@ function ChatContainer() {
     fetchGroupMessages();
   }, [currentGroup, currentChatUser, dispatch]);
 
-  // ✅ โหลดข้อความ 1-1 (ถ้าอยู่ในแชทส่วนตัว)
+  //  โหลดข้อความ 1-1 (ถ้าอยู่ในแชทส่วนตัว)
   useEffect(() => {
     // ❗ ป้องกันกรณี userInfo หรือ currentChatUser ยังไม่พร้อม
     if (!currentChatUser?.id || !userInfo?.id || currentGroup) return;
@@ -96,7 +96,7 @@ function ChatContainer() {
     fetchPrivateMessages();
   }, [currentChatUser, currentGroup, dispatch, userInfo]);
 
-  // ✅ ฟังข้อความแบบเรียลไทม์ (กลุ่ม + 1-1)
+  //  ฟังข้อความแบบเรียลไทม์ (กลุ่ม + 1-1)
   useEffect(() => {
     if (!socket?.current) return;
 

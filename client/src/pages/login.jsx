@@ -69,7 +69,7 @@ function Login() {
 
       <h2 className="text-xl">ลงชื่อเข้าใช้บัญชีของคุณ</h2>
 
-      {/* ✅ แสดงข้อความสำเร็จ ภายใน return */}
+      {/*  แสดงข้อความสำเร็จ ภายใน return */}
       {justRegistered && (
         <div className="text-green-400 text-sm -mt-2">
           สมัครสมาชิกสำเร็จ! กรุณาเข้าสู่ระบบ
@@ -89,10 +89,6 @@ function Login() {
         >
           {loading ? "กำลังเข้าสู่ระบบ..." : "เข้าสู่ระบบ"}
         </button>
-
-        <span className="text-sm text-gray-400">
-          การลงทะเบียนถูกปิดใช้งาน — กรุณาติดต่อผู้ดูแลระบบเพื่อขอบัญชี
-        </span>
       </div>
     </div>
   );

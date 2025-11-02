@@ -2,7 +2,7 @@ import React from "react";
 import { BsCheck, BsCheckAll } from "react-icons/bs";
 
 function MessageStatus({ messageStatus }) {
-  if (!messageStatus) return null; // ✅ ป้องกัน messageStatus เป็น undefined
+  if (!messageStatus) return null; //  ป้องกัน messageStatus เป็น undefined
 
   return (
     <>

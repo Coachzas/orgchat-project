@@ -7,7 +7,7 @@ export const initialState = {
   contactsPage: false,
   groupsPage: false,
   currentChatUser: undefined,
-  currentGroup: undefined, // ✅ state สำหรับเก็บกลุ่มปัจจุบัน
+  currentGroup: undefined, //  state สำหรับเก็บกลุ่มปัจจุบัน
 
   messages: [],
   socket: undefined,
@@ -122,14 +122,14 @@ const reducer = (state, action) => {
       console.log("📂 Changing groupsPage to:", action.payload);
       return { ...state, groupsPage: action.payload };
 
-    // ✅ เคสใหม่สำหรับตั้งค่ากลุ่มปัจจุบัน
+    //  เคสใหม่สำหรับตั้งค่ากลุ่มปัจจุบัน
     case reducerCases.SET_CURRENT_GROUP:
       console.log("🟢 SET_CURRENT_GROUP called:", action.group);
       return {
         ...state,
         currentGroup: action.group,
-        currentChatUser: undefined, // ✅ ป้องกันชนกับ 1-1
-        messages: [],               // ✅ เคลียร์ข้อความเก่า
+        currentChatUser: undefined, //  ป้องกันชนกับ 1-1
+        messages: [],               //  เคลียร์ข้อความเก่า
       };
 
     case reducerCases.SHOW_GROUP_FILES:

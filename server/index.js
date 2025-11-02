@@ -36,7 +36,7 @@ app.use(
     resave: false,
     saveUninitialized: false,
     cookie: {
-      secure: false, // ✅ true ถ้าใช้ https
+      secure: false, //  true ถ้าใช้ https
       httpOnly: true,
       sameSite: "lax",
       maxAge: 1000 * 60 * 60 * 24, // 1 วัน
@@ -75,13 +75,13 @@ global.io = io;
 global.onlineUsers = new Map();
 
 io.on("connection", (socket) => {
-  console.log("✅ ผู้ใช้เชื่อมต่อ socket:", socket.id);
+  console.log(" ผู้ใช้เชื่อมต่อ socket:", socket.id);
   global.chatSocket = socket;
 
   // 🧍‍♂️ เพิ่มผู้ใช้เข้าสู่ onlineUsers
   socket.on("add-user", (userId) => {
     onlineUsers.set(userId, socket.id);
-    console.log(`✅ ผู้ใช้ที่เชื่อมต่อ: ${userId}`);
+    console.log(` ผู้ใช้ที่เชื่อมต่อ: ${userId}`);
     socket.broadcast.emit("online-users", {
       onlineUsers: Array.from(onlineUsers.keys()),
     });
@@ -124,7 +124,7 @@ io.on("connection", (socket) => {
 
     const message = { ...baseMessage, sender: senderObj };
 
-    // ✅ ถ้ามี socket ของผู้รับ — ส่งให้ผู้รับ
+    //  ถ้ามี socket ของผู้รับ — ส่งให้ผู้รับ
     if (sendUserSocket) {
       socket.to(sendUserSocket).emit("msg-receive", { message });
     }
@@ -229,7 +229,7 @@ io.on("connection", (socket) => {
     }
   });
 
-  // ✅ รับสายเรียกเข้า (พร้อมส่ง roomId กลับไปยัง caller)
+  //  รับสายเรียกเข้า (พร้อมส่ง roomId กลับไปยัง caller)
   socket.on("accept-incoming-call", ({ id, roomId }) => {
     const sendUserSocket = onlineUsers.get(id);
     console.log("📩 [Server] รับ event accept-incoming-call จาก:", socket.id);

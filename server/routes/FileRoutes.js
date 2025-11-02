@@ -33,10 +33,10 @@ router.post("/upload", upload.single("file"), async (req, res) => {
       return res.status(400).json({ error: "Missing required fields or file" });
     }
 
-    // ✅ เก็บเป็น relative path
+    //  เก็บเป็น relative path
     const fileUrl = `/uploads/files/${req.file.filename}`;
 
-    // ✅ บันทึก DB
+    //  บันทึก DB
     const newMessage = await prisma.message.create({
       data: {
         senderId: parseInt(from),
@@ -51,9 +51,9 @@ router.post("/upload", upload.single("file"), async (req, res) => {
       },
     });
 
-    console.log("✅ บันทึก DB สำเร็จ:", newMessage);
+    console.log(" บันทึก DB สำเร็จ:", newMessage);
 
-    // ✅ ทำ absolute url สำหรับส่งกลับ
+    //  ทำ absolute url สำหรับส่งกลับ
     const staticUrl = `${req.protocol}://${req.get("host")}`;
     const responseMessage = {
       ...newMessage,

@@ -13,7 +13,7 @@ function FileMessage({ message, isOwnMessage }) {
 
   if (!fileUrl || !fileName) return null;
 
-  // ✅ ใช้ absoluteUrl ถ้ามี, ถ้าไม่มีใช้ NEXT_PUBLIC_STATIC_URL + fileUrl
+  //  ใช้ absoluteUrl ถ้ามี, ถ้าไม่มีใช้ NEXT_PUBLIC_STATIC_URL + fileUrl
   const url = absoluteUrl || `${process.env.NEXT_PUBLIC_STATIC_URL}${fileUrl}`;
 
   return (

@@ -1,4 +1,4 @@
-// ✅ MessageBar.jsx (เวอร์ชันแก้แล้ว ใช้ socket.current ทุกจุด)
+//  MessageBar.jsx (เวอร์ชันแก้แล้ว ใช้ socket.current ทุกจุด)
 import { useStateProvider } from "@/context/StateContext";
 import {
   ADD_FILE_MESSAGE_ROUTE,
@@ -44,7 +44,7 @@ function MessageBar() {
     console.log("👤 currentChatUser:", currentChatUser);
   }, [currentGroup, currentChatUser]);
 
-  // ✅ ส่งข้อความ text หรือ emoji
+  //  ส่งข้อความ text หรือ emoji
   const sendMessage = async () => {
     if (!message.trim()) return;
     const formattedMessage = message.replace(/(\r\n|\n|\r)/g, " ").trim();
@@ -56,7 +56,7 @@ function MessageBar() {
         return;
       }
 
-      // ✅ ถ้าอยู่ในกลุ่ม
+      //  ถ้าอยู่ในกลุ่ม
       if (currentGroup?.id) {
         const res = await axios.post(
           ADD_GROUP_MESSAGE_ROUTE,
@@ -71,7 +71,7 @@ function MessageBar() {
 
         // server controller will broadcast the saved message to the group
       }
-      // ✅ ถ้าเป็นแชท 1-1
+      //  ถ้าเป็นแชท 1-1
       else if (currentChatUser?.id) {
         console.log("📨 Sending private message to:", currentChatUser.id);
         const res = await axios.post(
@@ -98,7 +98,7 @@ function MessageBar() {
   };
 
 
-  // ✅ ส่งรูปภาพ
+  //  ส่งรูปภาพ
   const handleImageUpload = async (e) => {
     const file = e.target.files[0];
     if (!file) return;
@@ -122,7 +122,7 @@ function MessageBar() {
     }
   };
 
-  // ✅ ส่งไฟล์เอกสาร
+  //  ส่งไฟล์เอกสาร
   const handleFileUpload = async (e) => {
     const file = e.target.files[0];
     if (!file) return;
@@ -146,7 +146,7 @@ function MessageBar() {
     }
   };
 
-  // ✅ ส่งเสียง
+  //  ส่งเสียง
   const handleAudioUpload = async (audioBlob) => {
     const file = new File([audioBlob], "audio.mp3", { type: "audio/mpeg" });
     const formData = new FormData();
@@ -194,7 +194,7 @@ function MessageBar() {
             />
           </div>
 
-          {/* ✅ Hidden inputs */}
+          {/*  Hidden inputs */}
           <input
             ref={fileInputRef}
             type="file"
