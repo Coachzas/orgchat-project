@@ -7,9 +7,10 @@ import dynamic from "next/dynamic";
 import FileMessage from "./FileMessage";
 import GroupFiles from "./GroupFile";
 import axios from "axios";
-import { GET_GROUP_MESSAGES_ROUTE, GET_MESSAGES_ROUTE } from "@/utils/ApiRoutes";
+import { GET_GROUP_MESSAGES_ROUTE, GET_MESSAGES_ROUTE, GET_ALL_CONTACTS } from "@/utils/ApiRoutes";
 import { reducerCases } from "@/context/constants";
 import IncomingCall from "../common/IncomingCall";
+import Avatar from "../common/Avatar";
 
 const VoiceMessage = dynamic(() => import("./VoiceMessage"), { ssr: false });
 
@@ -97,31 +98,33 @@ function ChatContainer() {
   useEffect(() => {
     if (!socket?.current) return;
 
-    const handleGroupMessageReceive = ({ message }) => {
-      if (
-        message?.groupId === currentGroup?.id &&
-        message?.senderId !== userInfo?.id
-      ) {
-        dispatch({ type: reducerCases.ADD_MESSAGE, newMessage: message });
-      }
-    };
+    const handleGroupMessageReceive = async ({ message }) => {
+      if (message?.groupId !== currentGroup?.id) return;
 
-    const handlePrivateMessageReceive = ({ message }) => {
-      if (
-        (message.receiverId === userInfo?.id || message.senderId === userInfo?.id) &&
-        message.senderId !== userInfo?.id
-      ) {
-        dispatch({ type: reducerCases.ADD_MESSAGE, newMessage: message });
+      // If sender object missing, try to fetch from contacts and attach it so UI can render immediately
+      if (!message.sender) {
+        try {
+          const res = await axios.get(GET_ALL_CONTACTS);
+          // server returns grouped object { users: { A: [...], B: [...] } }
+          const grouped = res.data?.users;
+          const contacts = grouped ? Object.values(grouped).flat() : res.data || [];
+          const found = contacts.find((u) => String(u.id) === String(message.senderId) || String(u.userId) === String(message.senderId));
+          if (found) {
+            message.sender = found;
+          }
+        } catch (err) {
+          console.warn("Could not fetch contacts to resolve sender:", err);
+        }
       }
+
+      dispatch({ type: reducerCases.ADD_MESSAGE, newMessage: message });
     };
 
     socket.current.on("group-message-receive", handleGroupMessageReceive);
-    socket.current.on("msg-receive", handlePrivateMessageReceive);
 
     return () => {
-      if (socket?.current) {  
+      if (socket?.current) {
         socket.current.off("group-message-receive", handleGroupMessageReceive);
-        socket.current.off("msg-receive", handlePrivateMessageReceive);
       }
     };
 
@@ -131,7 +134,7 @@ function ChatContainer() {
     <>
       {incomingVoiceCall && <IncomingCall />}
 
-      <div className="h-[80vh] w-full relative flex-grow overflow-auto custom-scrollbar">
+      <div className="h-[80vh] w-full relative flex-grow overflow-y-auto overflow-x-hidden custom-scrollbar">
         <div className="bg-chat-background bg-fixed h-full w-full opacity-5 fixed left-0 top-0 z-0"></div>
 
         {currentGroup && (
@@ -161,56 +164,92 @@ function ChatContainer() {
           {loading ? (
             <p className="text-gray-400 text-center">กำลังโหลดข้อความ...</p>
           ) : (
-            <div className="flex flex-col justify-end w-full gap-1 overflow-auto">
+            <div className="flex flex-col justify-end w-full gap-1">
               {messages && messages.length > 0 ? (
                 messages.map((message, index) => {
                   const isOwn = message.senderId === userInfo?.id;
+                  const sender = message.sender || null;
+                  // standard bubble width: use larger width for files so file names have room
+                  const bubbleWrapperClass =
+                    message.type === "file"
+                      ? "max-w-[78%]"
+                      : currentGroup
+                        ? "max-w-[70%]" // กลุ่ม (มี avatar ด้านซ้าย)
+                        : "max-w-none w-[92%]"; // แชทเดี่ยว (ไม่มี avatar)
+                  // Prefer first + last name, then name, then email. If no sender object, don't render a placeholder.
+                  const senderName = sender
+                    ? `${(sender.firstName || "").trim()} ${(sender.lastName || "").trim()}`.trim() || sender.name || sender.email
+                    : null;
+
                   return (
                     <div
                       key={
-                        message.id ||
-                        `${message.senderId}-${message.createdAt || index}`
+                        message.id || `${message.senderId}-${message.createdAt || index}`
                       }
-                      className={`flex ${isOwn ? "justify-end" : "justify-start"}`}
+                      className={`flex ${isOwn ? "justify-end" : "justify-start"} mb-2 ${!currentGroup
+                        ? isOwn
+                          ? "mr-[6px]" // margin ขวาเฉพาะแชทเดี่ยวฝั่งเรา
+                          : "ml-[6px]" // margin ซ้ายเฉพาะแชทเดี่ยวฝั่งคู่สนทนา
+                        : ""
+                        }`}
                     >
-                      {message.type === "text" && (
-                        <div
-                          className={`text-white px-2 py-[5px] text-sm rounded-md flex gap-2 items-end max-w-[45%] ${isOwn
-                              ? "bg-outgoing-background"
-                              : "bg-incoming-background"
-                            }`}
-                        >
-                          <span className="break-all">{message?.message}</span>
-                          <div className="flex gap-1 items-end">
-                            <span className="text-bubble-meta text-[11px] px-1 min-w-fit">
-                              {message.createdAt
-                                ? calculateTime(message.createdAt)
-                                : ""}
-                            </span>
-                            {isOwn && (
-                              <MessageStatus
-                                messageStatus={message.messageStatus}
-                              />
+
+                      <div
+                        className={`flex items-start gap-1 ${isOwn ? "flex-row-reverse" : "flex-row"}`}
+                      >
+                        {/* Sender avatar + name for group messages */}
+                        {message.groupId && sender && (
+                          <div className="flex flex-col items-center text-xs w-[3.5rem]">
+                            <Avatar
+                              type="sm"
+                              image={sender.profilePicture || "/default-avatar.png"}
+                            />
+                            {senderName && (
+                              <div className="text-white text-[12px] mt-1 text-center truncate px-1">
+                                {senderName}
+                              </div>
                             )}
                           </div>
+                        )}
+
+                        {/* Message bubble area */}
+                        <div className={bubbleWrapperClass}>
+                          {message.type === "text" && (
+                            <div className={`${isOwn ? "self-end" : "self-start"}`}>
+                              <div
+                                className={`${isOwn ? "bg-outgoing-background text-white" : "bg-incoming-background text-white"} text-sm leading-[1.4] rounded-[14px] px-[14px] py-[10px] break-words`}
+                                style={{ wordBreak: "break-word", overflowWrap: "anywhere" }}
+                              >
+                                <span className="whitespace-pre-wrap break-words">
+                                  {message?.message}
+                                </span>
+                                <div className="flex justify-end items-center gap-1 mt-2">
+                                  <span className="text-bubble-meta text-[11px]">
+                                    {message.createdAt ? calculateTime(message.createdAt) : ""}
+                                  </span>
+                                  {isOwn && (
+                                    <MessageStatus messageStatus={message.messageStatus} />
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+                          )}
+                          {message.type === "image" && (
+                            <ImageMessage message={message} />
+                          )}
+                          {message.type === "audio" && (
+                            <VoiceMessage message={message} />
+                          )}
+                          {message.type === "file" && (
+                            <FileMessage message={message} isOwnMessage={isOwn} />
+                          )}
                         </div>
-                      )}
-                      {message.type === "image" && (
-                        <ImageMessage message={message} />
-                      )}
-                      {message.type === "audio" && (
-                        <VoiceMessage message={message} />
-                      )}
-                      {message.type === "file" && (
-                        <FileMessage message={message} isOwnMessage={isOwn} />
-                      )}
+                      </div>
                     </div>
                   );
                 })
               ) : (
-                <p className="text-gray-400 text-center">
-                  ยังไม่มีข้อความในห้องนี้
-                </p>
+                <p className="text-gray-400 text-center">ยังไม่มีข้อความในห้องนี้</p>
               )}
             </div>
           )}

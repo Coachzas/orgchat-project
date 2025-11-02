@@ -8,7 +8,7 @@ import { reducerCases } from "@/context/constants";
 import { ADD_AUDIO_MESSAGES_ROUTE } from "@/utils/ApiRoutes";
 
 function CaptureAudio({ onChange }) {
-  const [{ userInfo, currentChatUser, socket }, dispatch] = useStateProvider();
+  const [{ userInfo, currentChatUser, currentGroup, socket }, dispatch] = useStateProvider();
 
   const [isRecording, setRecording] = useState(false);
   const [recordingDuration, setRecordingDuration] = useState(0);
@@ -119,16 +119,18 @@ function CaptureAudio({ onChange }) {
   };
 
   const handleSend = async () => {
-    if (!renderedAudio || !userInfo || !currentChatUser) return;
+    if (!renderedAudio || !userInfo || (!currentChatUser && !currentGroup)) return;
 
     const formData = new FormData();
     formData.append("audio", renderedAudio, "recording.webm");
     formData.append("from", userInfo.id);
-    formData.append("to", currentChatUser.id);
+    formData.append("to", currentChatUser?.id || "");
+    formData.append("groupId", currentGroup?.id || "");
 
     try {
       const response = await axios.post(ADD_AUDIO_MESSAGES_ROUTE, formData, {
         headers: { "Content-Type": "multipart/form-data" },
+        withCredentials: true,
       });
 
       if (response.status === 201) {
@@ -137,26 +139,7 @@ function CaptureAudio({ onChange }) {
           ? messageRaw
           : `http://localhost:3005${messageRaw}`;
 
-        dispatch({
-          type: reducerCases.ADD_MESSAGE,
-          newMessage: {
-            id: Date.now(),
-            senderId: userInfo.id,
-            receiverId: currentChatUser.id,
-            message: audioUrl,
-            type: "audio",
-            createdAt: new Date().toISOString(),
-            messageStatus: "sent",
-          },
-        });
-
-        socket?.current.emit("send-msg", {
-          to: currentChatUser.id,
-          from: userInfo.id,
-          message: audioUrl,
-          type: "audio",
-        });
-
+        // server controller will broadcast the saved audio message; no client socket emit
         handleDelete();
       }
     } catch (err) {

@@ -68,10 +68,17 @@ router.post("/upload", upload.single("file"), async (req, res) => {
       if (sendUserSocket) {
         io.to(sendUserSocket).emit("msg-receive", { message: responseMessage });
       }
+      // also emit back to sender
+      const senderSocket = global.onlineUsers.get(parseInt(from));
+      if (senderSocket) io.to(senderSocket).emit("msg-receive", { message: responseMessage });
     }
 
     if (groupId) {
-      // TODO: ถ้าเป็นกลุ่ม ให้ loop member แล้ว emit หาแต่ละ user
+      try {
+        io.to(`group_${groupId}`).emit("group-message-receive", { message: responseMessage });
+      } catch (err) {
+        console.warn("Could not emit group file message:", err);
+      }
     }
 
     // ส่งกลับไปหา client ที่ upload เอง

@@ -27,8 +27,23 @@ export const addMessage = async (req, res, next) => {
           receiver: { connect: { id: parseInt(to) } },
           messageStatus: getUser ? "delivered" : "sent",
         },
+        include: { sender: true },
       });
-      return res.status(201).send({ message: newMessage });
+      // Prepare response with absolute fields if needed
+      const responseMessage = { ...newMessage };
+
+      // Emit via socket to recipient and sender so clients receive real-time update
+      try {
+        const io = req.app.get("io") || global.io;
+        const sendUserSocket = global.onlineUsers.get(parseInt(to));
+        if (sendUserSocket) io.to(sendUserSocket).emit("msg-receive", { message: responseMessage });
+        const senderSocket = global.onlineUsers.get(parseInt(from));
+        if (senderSocket) io.to(senderSocket).emit("msg-receive", { message: responseMessage });
+      } catch (emitErr) {
+        console.warn("Could not emit addMessage via socket:", emitErr);
+      }
+
+      return res.status(201).send({ message: responseMessage });
     }
     return res.status(400).send("From, to and message are required.");
   } catch (err) {
@@ -86,25 +101,47 @@ export const addImageMessage = async (req, res, next) => {
   try {
     ensureUploadsFolder();
     if (!req.file) return res.status(400).send("Image is required.");
-
-    const { from, to } = req.body;
-    if (!from || !to) return res.status(400).send("From and To are required.");
+    const { from, to, groupId } = req.body;
+    if (!from || (!to && !groupId))
+      return res.status(400).send("From and (To or groupId) are required.");
 
     const fileName = `${Date.now()}-${req.file.originalname}`;
     const filePath = path.join("uploads", "images", fileName);
     fs.renameSync(req.file.path, filePath);
 
-    const imageUrl = `http://localhost:3005/uploads/images/${fileName}`;
-    const message = await prisma.message.create({
+    const imageUrl = `${req.protocol}://${req.get("host")}/uploads/images/${fileName}`;
+
+    const newMessage = await prisma.message.create({
       data: {
         message: imageUrl,
         sender: { connect: { id: parseInt(from) } },
-        receiver: { connect: { id: parseInt(to) } },
+        receiver: to ? { connect: { id: parseInt(to) } } : undefined,
+        group: groupId ? { connect: { id: parseInt(groupId) } } : undefined,
         type: "image",
       },
+      include: { sender: true },
     });
 
-    return res.status(201).json({ message: imageUrl });
+    const responseMessage = { ...newMessage, absoluteUrl: imageUrl };
+
+    // Emit via socket
+    try {
+      const io = req.app.get("io") || global.io;
+      if (groupId) {
+        io.to(`group_${groupId}`).emit("group-message-receive", { message: responseMessage });
+      } else if (to) {
+        const sendUserSocket = global.onlineUsers.get(parseInt(to));
+        if (sendUserSocket) io.to(sendUserSocket).emit("msg-receive", { message: responseMessage });
+        // also emit back to sender so their UI gets the saved message via socket
+        const senderSocket = global.onlineUsers.get(parseInt(from));
+        if (senderSocket) io.to(senderSocket).emit("msg-receive", { message: responseMessage });
+      }
+
+    } catch (emitErr) {
+      console.warn("Could not emit image message via socket:", emitErr);
+    }
+
+    return res.status(201).json(responseMessage);
   } catch (err) {
     console.error("❌ addImageMessage error:", err);
     next(err);
@@ -117,25 +154,44 @@ export const addAudioMessage = async (req, res, next) => {
   try {
     ensureAudioUploadsFolder();
     if (!req.file) return res.status(400).send("Audio file is required.");
-
-    const { from, to } = req.body;
-    if (!from || !to) return res.status(400).send("From and To are required.");
+    const { from, to, groupId } = req.body;
+    if (!from || (!to && !groupId))
+      return res.status(400).send("From and (To or groupId) are required.");
 
     const fileName = `${Date.now()}-${req.file.originalname}`;
     const filePath = path.join("uploads", "audios", fileName);
     fs.renameSync(req.file.path, filePath);
 
-    const audioUrl = `http://localhost:3005/uploads/audios/${fileName}`;
-    const message = await prisma.message.create({
+    const audioUrl = `${req.protocol}://${req.get("host")}/uploads/audios/${fileName}`;
+
+    const newMessage = await prisma.message.create({
       data: {
         message: audioUrl,
         sender: { connect: { id: parseInt(from) } },
-        receiver: { connect: { id: parseInt(to) } },
+        receiver: to ? { connect: { id: parseInt(to) } } : undefined,
+        group: groupId ? { connect: { id: parseInt(groupId) } } : undefined,
         type: "audio",
       },
+      include: { sender: true },
     });
 
-    return res.status(201).json({ message: audioUrl });
+    const responseMessage = { ...newMessage, absoluteUrl: audioUrl };
+
+    try {
+      const io = req.app.get("io") || global.io;
+      if (groupId) {
+        io.to(`group_${groupId}`).emit("group-message-receive", { message: responseMessage });
+      } else if (to) {
+        const sendUserSocket = global.onlineUsers.get(parseInt(to));
+        if (sendUserSocket) io.to(sendUserSocket).emit("msg-receive", { message: responseMessage });
+        const senderSocket = global.onlineUsers.get(parseInt(from));
+        if (senderSocket) io.to(senderSocket).emit("msg-receive", { message: responseMessage });
+      }
+    } catch (emitErr) {
+      console.warn("Could not emit audio message via socket:", emitErr);
+    }
+
+    return res.status(201).json(responseMessage);
   } catch (err) {
     console.error("❌ addAudioMessage error:", err);
     next(err);
@@ -240,11 +296,15 @@ export const addGroupMessage = async (req, res, next) => {
       include: { sender: true },
     });
 
-    // ✅ ส่งข้อความ real-time ผ่าน socket
-    if (global.chatSocket) {
-      global.chatSocket.to(`group_${groupId}`).emit("group-message-receive", {
-        message: newMessage,
-      });
+    // ✅ ส่งข้อความ real-time ผ่าน socket (ใช้ global.io ซึ่งเป็น instance ของ socket.io)
+    if (global.io) {
+      try {
+        global.io.to(`group_${groupId}`).emit("group-message-receive", {
+          message: newMessage,
+        });
+      } catch (err) {
+        console.warn("Could not emit group-message-receive via global.io:", err);
+      }
     }
 
     return res.status(201).json({ message: newMessage });

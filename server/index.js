@@ -14,6 +14,7 @@ import GroupRoutes from "./routes/GroupRoutes.js";
 import AdminRoutes from "./routes/AdminRoutes.js";
 
 import { Server } from "socket.io";
+import prisma from "./utils/PrismaClient.js";
 
 dotenv.config();
 const app = express();
@@ -69,6 +70,7 @@ const io = new Server(server, {
 });
 
 app.set("io", io);
+global.io = io;
 
 global.onlineUsers = new Map();
 
@@ -95,10 +97,10 @@ io.on("connection", (socket) => {
   });
 
   // 💬 ส่งข้อความส่วนตัว (1-1)
-  socket.on("send-msg", (data) => {
+  socket.on("send-msg", async (data) => {
     const sendUserSocket = onlineUsers.get(data.to);
 
-    const message = {
+    const baseMessage = {
       id: Date.now(),
       senderId: data.from,
       receiverId: data.to,
@@ -108,11 +110,26 @@ io.on("connection", (socket) => {
       messageStatus: "delivered",
     };
 
+    // Try to include sender info so recipient can render profile immediately
+    let senderObj = null;
+    try {
+      const user = await prisma.user.findUnique({
+        where: { id: parseInt(data.from) },
+        select: { id: true, firstName: true, lastName: true, profilePicture: true, email: true },
+      });
+      if (user) senderObj = user;
+    } catch (err) {
+      console.warn("Could not fetch sender for private realtime message:", err);
+    }
+
+    const message = { ...baseMessage, sender: senderObj };
+
     // ✅ ถ้ามี socket ของผู้รับ — ส่งให้ผู้รับ
     if (sendUserSocket) {
       socket.to(sendUserSocket).emit("msg-receive", { message });
     }
-    //socket.emit("msg-receive", { message });
+    // Also emit back to sender (optional)
+    socket.emit("msg-receive", { message });
   });
 
   // 📢 ส่วนของ Group Chat
@@ -132,21 +149,33 @@ io.on("connection", (socket) => {
 
 
   // 📨 ส่งข้อความในกลุ่ม (เรียลไทม์ทั้งผู้ส่งและผู้รับ)
-  socket.on("group-message-send", (data) => {
+  socket.on("group-message-send", async (data) => {
     const { groupId, from, message, type } = data;
     console.log(`📨 ข้อความใหม่ใน group_${groupId} จาก user ${from}: ${message}`);
 
-    const msgData = {
-      message: {
-        id: Date.now(),
-        senderId: from,
-        groupId,
-        message,
-        type,
-        createdAt: new Date().toISOString(),
-        messageStatus: "delivered",
-      },
+    const baseMessage = {
+      id: Date.now(),
+      senderId: from,
+      groupId,
+      message,
+      type,
+      createdAt: new Date().toISOString(),
+      messageStatus: "delivered",
     };
+
+    // Try to fetch sender details to include in the real-time payload so recipients can render profile immediately
+    let senderObj = null;
+    try {
+      const user = await prisma.user.findUnique({
+        where: { id: parseInt(from) },
+        select: { id: true, firstName: true, lastName: true, profilePicture: true, email: true },
+      });
+      if (user) senderObj = user;
+    } catch (err) {
+      console.warn("Could not fetch sender for realtime group message:", err);
+    }
+
+    const msgData = { message: { ...baseMessage, sender: senderObj } };
 
     // ส่งให้สมาชิกในห้อง (ยกเว้นคนส่ง)
     socket.to(`group_${groupId}`).emit("group-message-receive", msgData);

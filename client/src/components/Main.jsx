@@ -55,15 +55,14 @@ function Main() {
         }
       });
 
-      // ✅ ฟัง event รับข้อความแบบเรียลไทม์ (ป้องกันข้อความเบิ้ล)
+      // ✅ ฟัง event รับข้อความแบบเรียลไทม์ (1-1 messages)
       socket.current.on("msg-receive", ({ message }) => {
         console.log("📨 ได้รับข้อความใหม่จาก socket:", message);
-        if (message.senderId !== userInfo.id) {
-          dispatch({
-            type: reducerCases.ADD_MESSAGE,
-            newMessage: message,
-          });
-        }
+        // Accept all msg-receive events (including messages sent by this user) because server is authoritative and emits saved messages for both sender and recipient.
+        dispatch({
+          type: reducerCases.ADD_MESSAGE,
+          newMessage: message,
+        });
       });
 
       // ✅ cleanup ป้องกัน event ซ้ำ

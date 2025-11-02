@@ -1,7 +1,6 @@
 import React, { useEffect, useRef, useState } from "react";
 import WaveSurfer from "wavesurfer.js";
 import { FaPlay, FaPause } from "react-icons/fa";
-import Avatar from "../common/Avatar";
 import MessageStatus from "../common/MessageStatus";
 import { useStateProvider } from "@/context/StateContext";
 import { calculateTime } from "@/utils/CalculateTime";
@@ -77,14 +76,9 @@ function VoiceMessage({ message }) {
   };
 
   return (
-    <div
-      className={`flex items-center gap-3 text-white px-4 pr-2 py-3 text-sm rounded-md max-w-[75%] ${
-        message.senderId === userInfo?.id
-          ? "bg-outgoing-background"
-          : "bg-incoming-background"
-      }`}
-    >
-      <Avatar type="lg" image={currentChatUser?.profilePicture} />
+    <div className="flex" style={{ width: '100%' }}>
+      <div className={`${message.senderId === userInfo?.id ? "ml-auto" : "mr-auto"} ${message.senderId === userInfo?.id ? "bg-outgoing-background text-white" : "bg-incoming-background text-white"} flex items-center gap-3 text-sm rounded-[14px] px-[14px] py-[10px] leading-[1.4] max-w-[70%]` }>
+      {/* Inline avatar removed for voice messages (show only audio bubble). Parent ChatContainer still renders avatars for group messages. */}
       <div className="cursor-pointer text-xl" onClick={togglePlay}>
         {isPlaying ? <FaPause /> : <FaPlay />}
       </div>
@@ -92,13 +86,14 @@ function VoiceMessage({ message }) {
         <div ref={waveformRef} className="w-full h-8" />
         <div className="flex justify-between text-xs pt-1 text-bubble-meta mt-1">
           <span>{formatTime(currentTime)} / {formatTime(duration)}</span>
-          <div className="flex items-center gap-2 ml-4 min-w-fit">
+          <div className="flex items-center gap-2">
             <span>{calculateTime(message.createdAt)}</span>
             {message.senderId === userInfo?.id && (
               <MessageStatus messageStatus={message.messageStatus} />
             )}
           </div>
         </div>
+      </div>
       </div>
     </div>
   );
