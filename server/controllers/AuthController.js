@@ -149,6 +149,40 @@ export const updateProfilePhoto = async (req, res, next) => {
 };
 
 /* ----------------------------------------
+ UPDATE USER PROFILE - แก้ about / firstName / lastName
+ ---------------------------------------- */
+export const updateUserProfile = async (req, res, next) => {
+  try {
+    const userId = req.session?.user?.id;
+    const { firstName, lastName, about } = req.body;
+    if (!userId) return res.status(401).json({ status: false, msg: "ยังไม่ได้เข้าสู่ระบบ" });
+
+    const data = {};
+    if (typeof firstName === "string" && firstName.trim() !== "") data.firstName = firstName.trim();
+    if (typeof lastName === "string" && lastName.trim() !== "") data.lastName = lastName.trim();
+    if (typeof about === "string") data.about = about.trim();
+
+    if (Object.keys(data).length === 0) {
+      return res.status(400).json({ status: false, msg: "ไม่มีข้อมูลให้แก้ไข" });
+    }
+
+    const updated = await prisma.user.update({
+      where: { id: userId },
+      data,
+      select: { id: true, email: true, firstName: true, lastName: true, about: true, profilePicture: true, role: true },
+    });
+
+    // update session
+    req.session.user = { ...req.session.user, firstName: updated.firstName, lastName: updated.lastName, about: updated.about, profilePicture: updated.profilePicture };
+
+    return res.status(200).json({ status: true, msg: "อัปเดตโปรไฟล์สำเร็จ", user: updated });
+  } catch (err) {
+    console.error("❌ updateUserProfile error:", err);
+    return res.status(500).json({ status: false, msg: "ไม่สามารถอัปเดตโปรไฟล์ได้" });
+  }
+};
+
+/* ----------------------------------------
  GET ALL USERS - ดึงผู้ใช้ทั้งหมด (group by ตัวอักษร)
 ---------------------------------------- */
 export const getAllUsers = async (req, res, next) => {

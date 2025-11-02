@@ -63,3 +63,5 @@ export const ADMIN_CREATE_USER_ROUTE = `${HOST}/api/admin/users`;
 // Auth extras: change password and update profile pic
 export const CHANGE_PASSWORD_ROUTE = `${AUTH_ROUTE}/change-password`;
 export const UPDATE_PROFILE_PIC_ROUTE = `${AUTH_ROUTE}/profile-photo`;
+// Update profile fields (PATCH)
+export const UPDATE_USER_PROFILE_ROUTE = `${AUTH_ROUTE}/profile`;

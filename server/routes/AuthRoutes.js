@@ -8,6 +8,7 @@ import {
   generateToken,
   changePassword,
   updateProfilePhoto,
+  updateUserProfile,
 } from "../controllers/AuthController.js";
 import { isAuthenticated } from "../middlewares/AuthMiddleware.js";
 
@@ -25,5 +26,8 @@ router.post("/change-password", isAuthenticated, changePassword);
 
 // upload/update profile photo (multipart/form-data)
 router.post("/profile-photo", isAuthenticated, uploadImage.single("image"), updateProfilePhoto);
+
+// update profile fields (about / name)
+router.patch("/profile", isAuthenticated, updateUserProfile);
 
 export default router;
