@@ -1,13 +1,13 @@
 import React from "react";
-import { useStateProvider } from "@/context/StateContext"; // ✅ ดึง context
+import { useStateProvider } from "@/context/StateContext"; //  ดึง context
 import ChatHeader from "./ChatHeader";
 import ChatContainer from "./ChatContainer";
 import MessageBar from "./MessageBar";
 
 function Chat() {
-  const [{ currentChatUser, currentGroup }] = useStateProvider(); // ✅ เพิ่ม currentGroup
+  const [{ currentChatUser, currentGroup }] = useStateProvider(); //  เพิ่ม currentGroup
 
-  // ✅ แสดงเมื่อมีทั้งแชท 1-1 หรือกลุ่ม
+  //  แสดงเมื่อมีทั้งแชท 1-1 หรือกลุ่ม
   if (!currentChatUser && !currentGroup) {
     return (
       <div className="flex justify-center items-center w-full h-full text-gray-400">

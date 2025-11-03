@@ -8,11 +8,11 @@ function IncomingCall() {
 
   if (!incomingVoiceCall) return null;
 
-  // ✅ เมื่อผู้ใช้กด "รับสาย"
+  //  เมื่อผู้ใช้กด "รับสาย"
   const acceptCall = () => {
     if (!socket?.current || !incomingVoiceCall) return;
 
-    console.log("✅ [Receiver] รับสายจาก:", incomingVoiceCall.id);
+    console.log(" [Receiver] รับสายจาก:", incomingVoiceCall.id);
 
     // 🔹 แจ้ง server ว่าผู้รับกดรับสาย
     socket.current.emit("accept-incoming-call", {
@@ -33,7 +33,7 @@ function IncomingCall() {
     // 🔹 ล้าง popup หลังรับสาย
     dispatch({
       type: reducerCases.SET_INCOMING_VOICE_CALL,
-      incomingVoiceCall: undefined,
+      incomingVoiceCall: null,
     });
   };
 
@@ -53,7 +53,7 @@ function IncomingCall() {
     dispatch({ type: reducerCases.END_CALL });
     dispatch({
       type: reducerCases.SET_INCOMING_VOICE_CALL,
-      incomingVoiceCall: undefined,
+      incomingVoiceCall: null,
     });
   };
 

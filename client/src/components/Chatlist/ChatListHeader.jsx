@@ -5,6 +5,7 @@ import { BsFillChatLeftTextFill, BsThreeDotsVertical } from "react-icons/bs";
 import { reducerCases } from "@/context/constants";
 import { useRouter } from "next/router";
 import ContextMenu from "../common/ContextMenu";
+import ProfileModal from "@/components/Profile/ProfileModal";
 import { FiUsers } from "react-icons/fi";
 
 function ChatListHeader() {
@@ -13,6 +14,7 @@ function ChatListHeader() {
 
   const [contextMenuCoordinates, setContextMenuCoordinates] = useState({ x: 0, y: 0 });
   const [isContextMenuVisible, setIsContextMenuVisible] = useState(false);
+  const [showProfileModal, setShowProfileModal] = useState(false);
 
   const showContextMenu = (e) => {
     e.preventDefault();
@@ -21,6 +23,13 @@ function ChatListHeader() {
   };
 
   const contextMenuOptions = [
+    {
+      name: "แก้ไขโปรไฟล์",
+      callback: () => {
+        setIsContextMenuVisible(false);
+        setShowProfileModal(true);
+      },
+    },
     {
       name: "Logout",
       callback: async () => {
@@ -48,7 +57,7 @@ function ChatListHeader() {
         />
         <div className="flex flex-col overflow-hidden">
           <span className="text-primary-strong text-sm font-semibold truncate">
-            {/* ✅ ป้องกัน undefined firstName/lastName */}
+            {/*  ป้องกัน undefined firstName/lastName */}
             {userInfo?.firstName || userInfo?.name || "ไม่ระบุ"}{" "}
             {userInfo?.lastName || ""}
             {userInfo?.role && (
@@ -64,7 +73,7 @@ function ChatListHeader() {
       </div>
 
       {/* 🧭 ปุ่มควบคุม */}
-      <div className="flex gap-6">
+  <div className="flex gap-6">
         <BsFillChatLeftTextFill
           className="text-panel-header-icon cursor-pointer text-xl"
           title="แชทใหม่"
@@ -83,6 +92,16 @@ function ChatListHeader() {
           onClick={showContextMenu}
           id="context-opener"
         />
+        {/* ปุ่มไปยัง Admin Dashboard (เห็นเฉพาะ admin) */}
+        {userInfo?.role === "admin" && (
+          <button
+            onClick={() => router.push("/admin")}
+            className="bg-red-500 hover:bg-red-600 text-white px-3 py-1 rounded-md text-sm"
+            title="ไปยัง Admin Dashboard"
+          >
+            Admin Dashboard
+          </button>
+        )}
       </div>
 
       {isContextMenuVisible && (
@@ -92,6 +111,10 @@ function ChatListHeader() {
           contextMenu={isContextMenuVisible}
           setContextMenu={setIsContextMenuVisible}
         />
+      )}
+
+      {showProfileModal && (
+        <ProfileModal open={showProfileModal} onClose={() => setShowProfileModal(false)} />
       )}
     </div>
   );

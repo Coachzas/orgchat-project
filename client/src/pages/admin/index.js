@@ -1,6 +1,10 @@
 import React, { useEffect, useState, useRef } from "react";
+import { useRouter } from "next/router";
+import { useStateProvider } from "@/context/StateContext";
+import { reducerCases } from "@/context/constants";
 import axios from "axios";
 import { io } from "socket.io-client";
+import { ADMIN_CREATE_USER_ROUTE, ADMIN_USERS_ROUTE, SOCKET_HOST } from "@/utils/ApiRoutes";
 
 export default function AdminDashboard() {
   const [users, setUsers] = useState([]);
@@ -8,11 +12,13 @@ export default function AdminDashboard() {
   const [error, setError] = useState("");
   const [updatingId, setUpdatingId] = useState(null);
   const socket = useRef(null);
+  const router = useRouter();
+  const [, dispatch] = useStateProvider();
 
   // โหลดข้อมูลผู้ใช้ทั้งหมด
   useEffect(() => {
     axios
-      .get("http://localhost:3005/api/admin/users", { withCredentials: true })
+      .get(ADMIN_USERS_ROUTE, { withCredentials: true })
       .then((res) => {
         setUsers(res.data);
         setLoading(false);
@@ -24,9 +30,9 @@ export default function AdminDashboard() {
       });
   }, []);
 
-  // ✅ เชื่อมต่อ Socket.IO (เรียลไทม์)
+  //  เชื่อมต่อ Socket.IO (เรียลไทม์)
   useEffect(() => {
-    socket.current = io("http://localhost:3005", {
+    socket.current = io(SOCKET_HOST, {
       withCredentials: true,
     });
 
@@ -53,7 +59,7 @@ export default function AdminDashboard() {
     try {
       setUpdatingId(id);
       const res = await axios.put(
-        `http://localhost:3005/api/admin/users/${id}/role`,
+        `${ADMIN_USERS_ROUTE}/${id}/role`,
         { role: newRole },
         { withCredentials: true }
       );
@@ -81,14 +87,78 @@ export default function AdminDashboard() {
           โปรดเข้าสู่ระบบที่{" "}
           <a href="http://localhost:3000/login">/login</a> ด้วยบัญชีแอดมินก่อน
         </small>
+        <div style={{ marginTop: 12 }}>
+          <button
+            onClick={() => {
+              // เคลียร์การเลือกแชท/กลุ่ม แล้วกลับไปหน้าแชทหลัก
+              dispatch({ type: reducerCases.SET_EXIT_CHAT });
+              router.push("/");
+            }}
+            style={{ color: "#fff", background: "#1f8a70", padding: "8px 12px", borderRadius: 6, border: "none", cursor: "pointer" }}
+          >
+            ◀ กลับไปหน้าแชท
+          </button>
+        </div>
       </div>
     );
 
   return (
     <div style={{ padding: "20px", fontFamily: "sans-serif" }}>
-      <h2>📊 Admin Dashboard (Realtime)</h2>
-      <p>จัดการผู้ใช้และสิทธิ์ของแต่ละคนแบบเรียลไทม์</p>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+        <div>
+          <h2>📊 Admin Dashboard (Realtime)</h2>
+          <p>จัดการผู้ใช้และสิทธิ์ของแต่ละคนแบบเรียลไทม์</p>
+        </div>
+        <div>
+          <button
+            onClick={() => {
+              dispatch({ type: reducerCases.SET_EXIT_CHAT });
+              router.push("/");
+            }}
+            style={{ background: "#1f8a70", color: "#fff", padding: "8px 12px", border: "none", borderRadius: 6, cursor: "pointer" }}
+          >
+            ◀ กลับไปหน้าแชท
+          </button>
+        </div>
+      </div>
 
+      {/* --- ฟอร์มสร้างผู้ใช้โดย Admin --- */}
+      <div style={{ marginBottom: 16, padding: 12, background: "#fff", borderRadius: 8 }}>
+        <h3>➕ สร้างผู้ใช้ใหม่ (Admin)</h3>
+        <div style={{ display: "flex", gap: 8, marginTop: 8, flexWrap: 'wrap' }}>
+          <input placeholder="อีเมล" id="admin_new_email" style={{ padding: 8 }} />
+          <input placeholder="รหัสผ่าน" id="admin_new_password" type="password" style={{ padding: 8 }} />
+          <input placeholder="ชื่อ" id="admin_new_first" style={{ padding: 8 }} />
+          <input placeholder="นามสกุล" id="admin_new_last" style={{ padding: 8 }} />
+          <select id="admin_new_role" style={{ padding: 8 }}>
+            <option value="employee">employee</option>
+            <option value="manager">manager</option>
+            <option value="admin">admin</option>
+          </select>
+          <button
+            onClick={async () => {
+              const email = document.getElementById("admin_new_email").value.trim().toLowerCase();
+              const password = document.getElementById("admin_new_password").value;
+              const firstName = document.getElementById("admin_new_first").value.trim();
+              const lastName = document.getElementById("admin_new_last").value.trim();
+              const role = document.getElementById("admin_new_role").value;
+              if (!email || !password || !firstName || !lastName) return alert("กรอกข้อมูลไม่ครบ");
+
+              try {
+                const res = await axios.post(ADMIN_CREATE_USER_ROUTE, { email, password, firstName, lastName, role }, { withCredentials: true });
+                alert(res.data.message || "สร้างผู้ใช้สำเร็จ");
+                setUsers((prev) => [res.data.user, ...prev]);
+              } catch (err) {
+                console.error(err);
+                alert(err.response?.data?.error || "สร้างผู้ใช้ไม่สำเร็จ");
+              }
+            }}
+            style={{ background: "#1f8a70", color: "#fff", border: "none", padding: "8px 10px", borderRadius: 6 }}
+          >
+            สร้าง
+          </button>
+        </div>
+      </div>
       <table
         border="1"
         cellPadding="8"

@@ -7,6 +7,9 @@ import {
   addAudioMessage,
   getInitialContactswithMessages,
   addGroupMessage,
+  getGroupNotes,      
+  addGroupNote,
+  deleteGroupNote,       
 } from "../controllers/MessageController.js";
 
 const router = express.Router();
@@ -33,4 +36,10 @@ router.get("/get-initial-contacts/:from", getInitialContactswithMessages);
 // 💬 ส่งข้อความในกลุ่ม
 router.post("/add-group-message", addGroupMessage);
 
+// ดึงโน้ตของกลุ่ม
+router.get("/groups/:groupId/notes", getGroupNotes);
+router.post("/groups/:groupId/notes", addGroupNote);
+
+// 🗑️ ลบโน้ตของกลุ่ม
+router.delete("/groups/:groupId/notes/:noteId", deleteGroupNote);
 export default router;

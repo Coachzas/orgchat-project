@@ -1,27 +1,39 @@
 import express from "express";
-import { getGroupMessages } from "../controllers/MessageController.js";
+import { getGroupMessages, getGroupNotes, addGroupNote } from "../controllers/MessageController.js";
 import prisma from "../utils/PrismaClient.js";
 import { upload, uploadGroupFile, getGroupFiles } from "../controllers/GroupFileController.js";
 import { isAuthenticated } from "../middlewares/AuthMiddleware.js";
+import { getLatestGroupNote } from "../controllers/MessageController.js";
 
 const router = express.Router();
 
-// ✅ สร้างกลุ่มใหม่
-router.post("/create", async (req, res) => {
+//  สร้างกลุ่มใหม่ (เฉพาะ admin/manager)
+router.post("/create", isAuthenticated, async (req, res) => {
   try {
     console.log("📦 กลุ่มที่รับจาก client:", req.body);
     const { name, about, members } = req.body;
+    const creator = req.session?.user;
 
-    if (!name || !members || !Array.isArray(members) || members.length === 0) {
+    //  ตรวจสิทธิ์: เฉพาะ admin หรือ manager เท่านั้น
+    if (!creator || !["admin", "manager"].includes(creator.role)) {
+      return res.status(403).json({ error: "อนุญาตเฉพาะ admin หรือ manager เท่านั้น" });
+    }
+
+    if (!name || !Array.isArray(members) || members.length === 0) {
       return res.status(400).json({ error: "ชื่อกลุ่มและสมาชิกต้องระบุ" });
     }
+
+    //  เพิ่มคนสร้างกลุ่มเข้าเป็นสมาชิกด้วย
+    const groupMembers = members.includes(creator.id)
+      ? members
+      : [...members, creator.id];
 
     const group = await prisma.group.create({
       data: {
         name,
         about: about || null,
         members: {
-          create: members.map((userId) => ({ userId: Number(userId) })),
+          create: groupMembers.map((userId) => ({ userId: Number(userId) })),
         },
       },
       include: {
@@ -29,7 +41,12 @@ router.post("/create", async (req, res) => {
       },
     });
 
-    console.log("✅ สร้างกลุ่มสำเร็จ:", group.name);
+    console.log(` ${creator.role} (${creator.id}) สร้างกลุ่ม: ${group.name}`);
+
+    //  ส่ง event เรียลไทม์ให้ทุก client
+    const io = req.app.get("io");
+    if (io) io.emit("group-created", group);
+
     res.json(group);
   } catch (error) {
     console.error("❌ เกิดข้อผิดพลาดในการสร้างกลุ่ม:", error);
@@ -37,10 +54,17 @@ router.post("/create", async (req, res) => {
   }
 });
 
-// ✅ ดึงข้อความในกลุ่มทั้งหมด
+
+//  ดึงข้อความในกลุ่มทั้งหมด
 router.get("/get-group-messages/:groupId", getGroupMessages);
 
-// ✅ ดึงรายการกลุ่มทั้งหมด
+//  ดึงโน้ตของกลุ่ม (notes stored as messages with type = 'note')
+router.get("/:groupId/notes", isAuthenticated, getGroupNotes);
+
+//  เพิ่มโน้ตในกลุ่ม (เฉพาะ admin)
+router.post("/:groupId/notes", isAuthenticated, addGroupNote);
+
+//  ดึงรายการกลุ่มทั้งหมด
 router.get("/", async (req, res) => {
   try {
     const groups = await prisma.group.findMany({
@@ -53,7 +77,7 @@ router.get("/", async (req, res) => {
   }
 });
 
-// ✅ เข้าร่วมกลุ่ม
+//  เข้าร่วมกลุ่ม
 router.post("/:groupId/join", async (req, res) => {
   try {
     const { groupId } = req.params;
@@ -75,7 +99,7 @@ router.post("/:groupId/join", async (req, res) => {
   }
 });
 
-// ✅ ออกจากกลุ่ม
+//  ออกจากกลุ่ม
 router.post("/:groupId/leave", async (req, res) => {
   try {
     const { groupId } = req.params;
@@ -92,7 +116,7 @@ router.post("/:groupId/leave", async (req, res) => {
   }
 });
 
-// ✅ ดึงข้อความในกลุ่ม
+//  ดึงข้อความในกลุ่ม
 router.get("/:groupId/messages", async (req, res) => {
   try {
     const { groupId } = req.params;
@@ -123,4 +147,43 @@ router.post("/:groupId/files", isAuthenticated, upload.single("file"), uploadGro
 
 // 📥 ดูไฟล์ทั้งหมดในกลุ่ม
 router.get("/:groupId/files", isAuthenticated, getGroupFiles);
+
+// ดึงโน้ตล่าสุดของกลุ่ม
+router.get("/:groupId/latest-note", getLatestGroupNote);
+
+// 🗑️ ลบกลุ่ม (เฉพาะ admin หรือ manager)
+router.delete("/:groupId/delete", isAuthenticated, async (req, res) => {
+  try {
+    const { groupId } = req.params;
+    const userRole = req.session.user?.role;
+
+    //  ตรวจสิทธิ์
+    if (!["admin", "manager"].includes(userRole)) {
+      return res.status(403).json({ error: "คุณไม่มีสิทธิ์ลบกลุ่มนี้" });
+    }
+
+    // ตรวจสอบว่ากลุ่มมีอยู่ไหม
+    const existingGroup = await prisma.group.findUnique({
+      where: { id: Number(groupId) },
+    });
+
+    if (!existingGroup) {
+      return res.status(404).json({ error: "ไม่พบกลุ่มที่ต้องการลบ" });
+    }
+
+    //  ลบกลุ่ม (Prisma จะ cascade ลบ member, file, message ด้วย)
+    await prisma.group.delete({
+      where: { id: Number(groupId) },
+    });
+
+    // Broadcast event ให้ client ทั้งหมดอัปเดต
+    const io = req.app.get("io");
+    if (io) io.emit("group-deleted", { groupId: Number(groupId) });
+
+    res.json({ message: "ลบกลุ่มสำเร็จ", groupId: Number(groupId) });
+  } catch (error) {
+    console.error("❌ ลบกลุ่มล้มเหลว:", error);
+    res.status(500).json({ error: "ไม่สามารถลบกลุ่มได้" });
+  }
+});
 export default router;

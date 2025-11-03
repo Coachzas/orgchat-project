@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState } from "react";
 import ChatList from "./Chatlist/ChatList";
 import Empty from "./Empty";
 import axios from "axios";
-import { HOST, GET_MESSAGES_ROUTE_1V1 } from "@/utils/ApiRoutes";
+import { SOCKET_HOST, CHECK_AUTH_ROUTE, GET_MESSAGES_ROUTE_1V1 } from "@/utils/ApiRoutes";
 import { useRouter } from "next/router";
 import { useStateProvider } from "@/context/StateContext";
 import { reducerCases } from "@/context/constants";
@@ -31,19 +31,43 @@ function Main() {
 
   const socket = useRef(null);
 
-  // 🔹 ตรวจสอบผู้ใช้ ถ้าไม่มีให้กลับไป login
+  // � ตรวจสอบ session ปัจจุบัน เมื่อเปิดแอป (ถ้าหน้าตัวแปร userInfo ยังว่าง)
+  const [checkingAuth, setCheckingAuth] = useState(true);
   useEffect(() => {
-    if (!userInfo) router.push("/login");
-  }, [userInfo, router]);
+    const checkSession = async () => {
+      try {
+        if (!userInfo) {
+          const res = await axios.get(CHECK_AUTH_ROUTE, { withCredentials: true });
+          if (res?.data?.user) {
+            dispatch({ type: reducerCases.SET_USER_INFO, userInfo: res.data.user });
+          }
+        }
+      } catch (err) {
+        // ถ้าไม่มี session จะถูก redirect โดย useEffect ด้านล่าง (เมื่อ checkingAuth = false)
+        console.log("No active session or unable to fetch current user", err?.response?.status || err?.message);
+      } finally {
+        setCheckingAuth(false);
+      }
+    };
+
+    checkSession();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // �🔹 ตรวจสอบผู้ใช้ ถ้าไม่มีให้กลับไป login (แต่รอการตรวจสอบ session เริ่มต้นก่อน)
+  useEffect(() => {
+    if (!userInfo && !checkingAuth) router.push("/login");
+  }, [userInfo, router, checkingAuth]);
 
   // 🔹 เชื่อมต่อ socket.io และฟัง event ทั้งหมด (role, message)
   useEffect(() => {
     if (userInfo && !socket.current) {
-      socket.current = io(HOST, { withCredentials: true });
+      // Connect directly to backend socket host so socket.io connects to the server (not Next dev server)
+      socket.current = io(SOCKET_HOST, { withCredentials: true });
       socket.current.emit("add-user", userInfo.id);
       dispatch({ type: reducerCases.SET_SOCKET, socket });
 
-      // ✅ ฟัง event อัปเดต role (เรียลไทม์)
+      //  ฟัง event อัปเดต role (เรียลไทม์)
       socket.current.on("role-updated", (data) => {
         console.log("📡 [Main] role-updated:", data);
         if (userInfo?.id === data.id) {
@@ -55,7 +79,7 @@ function Main() {
         }
       });
 
-      // ✅ ฟัง event รับข้อความแบบเรียลไทม์ (1-1 messages)
+      //  ฟัง event รับข้อความแบบเรียลไทม์ (1-1 messages)
       socket.current.on("msg-receive", ({ message }) => {
         console.log("📨 ได้รับข้อความใหม่จาก socket:", message);
         // Accept all msg-receive events (including messages sent by this user) because server is authoritative and emits saved messages for both sender and recipient.
@@ -65,7 +89,7 @@ function Main() {
         });
       });
 
-      // ✅ cleanup ป้องกัน event ซ้ำ
+      //  cleanup ป้องกัน event ซ้ำ
       return () => {
         if (socket.current) {
           socket.current.off("role-updated");
@@ -123,13 +147,18 @@ function Main() {
       dispatch({
         type: reducerCases.SET_INCOMING_VIDEO_CALL,
         incomingVideoCall: {
-          ...data,
+          id: data.from.id,
+          firstName: data.from.firstName,
+          lastName: data.from.lastName,
+          profilePicture: data.from.profilePicture,
+          callType: data.callType,
+          roomId: data.roomId,
           type: "in-coming",
         },
       });
     });
 
-    // ✅ cleanup
+    //  cleanup
     return () => {
       if (socket.current) {
         socket.current.off("incoming-voice-call");

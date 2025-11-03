@@ -2,7 +2,7 @@ import fs from "fs";
 import path from "path";
 import prisma from "../utils/PrismaClient.js";
 
-// ✅ ตรวจสอบและสร้างโฟลเดอร์อัปโหลด (ภาพ/เสียง)
+//  ตรวจสอบและสร้างโฟลเดอร์อัปโหลด (ภาพ/เสียง)
 const ensureUploadsFolder = () => {
   const uploadDir = path.join("uploads", "images");
   if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir, { recursive: true });
@@ -12,7 +12,7 @@ const ensureAudioUploadsFolder = () => {
   if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir, { recursive: true });
 };
 
-// ✅ ฟังก์ชันส่งข้อความปกติ (1-1)
+//  ฟังก์ชันส่งข้อความปกติ (1-1)
 export const addMessage = async (req, res, next) => {
   try {
     const { message, from, to } = req.body;
@@ -53,7 +53,7 @@ export const addMessage = async (req, res, next) => {
   }
 };
 
-// ✅ ดึงข้อความระหว่างผู้ใช้สองคน
+//  ดึงข้อความระหว่างผู้ใช้สองคน
 export const getMessages = async (req, res, next) => {
   try {
     const { from, to } = req.params;
@@ -96,7 +96,100 @@ export const getGroupMessages = async (req, res) => {
   }
 };
 
-// ✅ ฟังก์ชันส่งข้อความแบบภาพ
+// ---------- NEW: Group Notes (store as message.type = 'note') ----------
+export const getGroupNotes = async (req, res) => {
+  try {
+    const { groupId } = req.params;
+    const notes = await prisma.message.findMany({
+      where: { groupId: parseInt(groupId), type: "note" },
+      include: {
+        sender: { select: { id: true, firstName: true, lastName: true, profilePicture: true } },
+      },
+      orderBy: { createdAt: "desc" },
+    });
+    res.status(200).json(notes);
+  } catch (error) {
+    console.error("❌ [getGroupNotes] Error:", error);
+    res.status(500).json({ error: "Failed to fetch group notes" });
+  }
+};
+
+// เพิ่มโน้ตโดย admin เท่านั้น
+export const addGroupNote = async (req, res, next) => {
+  try {
+    const { groupId } = req.params;
+    const { from, message } = req.body;
+
+    if (!from || !groupId || !message) {
+      return res.status(400).json({ error: "ข้อมูลไม่ครบสำหรับโน้ต" });
+    }
+
+    // ตรวจสิทธิ์: ต้องเป็น admin เท่านั้น
+    const role = req.session?.user?.role;
+    if (role !== "admin") {
+      return res.status(403).json({ error: "ห้าม: เฉพาะ admin เท่านั้นในการลงโน้ต" });
+    }
+
+    const newNote = await prisma.message.create({
+      data: {
+        message,
+        sender: { connect: { id: parseInt(from) } },
+        group: { connect: { id: parseInt(groupId) } },
+        type: "note",
+      },
+      include: { sender: true },
+    });
+
+    // Broadcast ในนามของกลุ่ม
+    if (global.io) {
+      try {
+        global.io.to(`group_${groupId}`).emit("group-note-receive", { note: newNote });
+      } catch (err) {
+        console.warn("Could not emit group-note-receive:", err);
+      }
+    }
+
+    return res.status(201).json({ note: newNote });
+  } catch (err) {
+    console.error("❌ addGroupNote error:", err);
+    next(err);
+    return;
+  }
+};
+
+export const deleteGroupNote = async (req, res) => {
+  try {
+    const { groupId, noteId } = req.params;
+    const role = req.session?.user?.role;
+
+    if (role !== "admin") {
+      return res.status(403).json({ error: "อนุญาตเฉพาะ admin เท่านั้น" });
+    }
+
+    const existingNote = await prisma.message.findUnique({
+      where: { id: parseInt(noteId) },
+    });
+
+    if (!existingNote || existingNote.groupId !== parseInt(groupId)) {
+      return res.status(404).json({ error: "ไม่พบโน้ตที่ต้องการลบ" });
+    }
+
+    await prisma.message.delete({ where: { id: parseInt(noteId) } });
+
+    // 🔔 Broadcast event ให้ทุก client ในกลุ่มลบโน้ตนี้ออก
+    if (global.io) {
+      console.log("📢 Emit group-note-deleted:", groupId, noteId);
+      global.io.to(`group_${groupId}`).emit("group-note-deleted", { noteId });
+    }
+
+    return res.status(200).json({ message: "ลบโน้ตสำเร็จ", noteId });
+  } catch (error) {
+    console.error("❌ [deleteGroupNote] Error:", error);
+    return res.status(500).json({ error: "ไม่สามารถลบโน้ตได้" });
+  }
+};
+
+//  ฟังก์ชันส่งข้อความแบบภาพ
 export const addImageMessage = async (req, res, next) => {
   try {
     ensureUploadsFolder();
@@ -149,7 +242,7 @@ export const addImageMessage = async (req, res, next) => {
   }
 };
 
-// ✅ ฟังก์ชันส่งข้อความแบบเสียง
+//  ฟังก์ชันส่งข้อความแบบเสียง
 export const addAudioMessage = async (req, res, next) => {
   try {
     ensureAudioUploadsFolder();
@@ -199,7 +292,7 @@ export const addAudioMessage = async (req, res, next) => {
   }
 };
 
-// ✅ ฟังก์ชันดึงรายชื่อผู้ติดต่อพร้อมข้อความล่าสุด
+//  ฟังก์ชันดึงรายชื่อผู้ติดต่อพร้อมข้อความล่าสุด
 export const getInitialContactswithMessages = async (req, res, next) => {
   try {
     const userId = parseInt(req.params.from);
@@ -279,7 +372,7 @@ export const getInitialContactswithMessages = async (req, res, next) => {
   }
 };
 
-// ✅ ฟังก์ชันส่งข้อความในกลุ่ม
+//  ฟังก์ชันส่งข้อความในกลุ่ม
 export const addGroupMessage = async (req, res, next) => {
   try {
     const { from, groupId, message, type } = req.body;
@@ -296,7 +389,7 @@ export const addGroupMessage = async (req, res, next) => {
       include: { sender: true },
     });
 
-    // ✅ ส่งข้อความ real-time ผ่าน socket (ใช้ global.io ซึ่งเป็น instance ของ socket.io)
+    //  ส่งข้อความ real-time ผ่าน socket (ใช้ global.io ซึ่งเป็น instance ของ socket.io)
     if (global.io) {
       try {
         global.io.to(`group_${groupId}`).emit("group-message-receive", {
@@ -312,5 +405,33 @@ export const addGroupMessage = async (req, res, next) => {
     console.error("❌ addGroupMessage error:", err);
     next(err);
     return;
+  }
+};
+
+export const getLatestGroupNote = async (req, res) => {
+  try {
+    const { groupId } = req.params;
+
+    const latestNote = await prisma.message.findFirst({
+      where: {
+        groupId: parseInt(groupId),
+        type: "note",
+      },
+      orderBy: { createdAt: "desc" },
+      include: {
+        sender: {
+          select: {
+            firstName: true,
+            lastName: true,
+            profilePicture: true,
+          },
+        },
+      },
+    });
+
+    res.status(200).json(latestNote || null);
+  } catch (error) {
+    console.error("❌ [getLatestGroupNote] Error:", error);
+    res.status(500).json({ error: "ไม่สามารถโหลดประกาศล่าสุดได้" });
   }
 };

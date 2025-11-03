@@ -5,13 +5,13 @@ import { reducerCases } from "@/context/constants";
 
 function IncomingVideoCall() {
   const [{ incomingVideoCall, socket }, dispatch] = useStateProvider();
-
+console.log("🎥 incomingVideoCall object:", incomingVideoCall);
   if (!incomingVideoCall) return null;
 
-  // ✅ รับสาย
+  //  รับสาย
   const acceptCall = () => {
-    if (!socket?.current || !incomingVideoCall) return;
-    console.log("✅ [Receiver] รับสายวิดีโอจาก:", incomingVideoCall.id);
+    if (!socket?.current || incomingVideoCall.from?.profilePicture || !incomingVideoCall) return;
+    console.log(" [Receiver] รับสายวิดีโอจาก:", incomingVideoCall.id);
 
     // แจ้ง server ว่าผู้รับกดรับสาย
     socket.current.emit("accept-incoming-call", {
@@ -32,7 +32,7 @@ function IncomingVideoCall() {
     // ปิด popup
     dispatch({
       type: reducerCases.SET_INCOMING_VIDEO_CALL,
-      incomingVideoCall: undefined,
+      incomingVideoCall: null,
     });
   };
 
@@ -49,7 +49,7 @@ function IncomingVideoCall() {
     dispatch({ type: reducerCases.END_CALL });
     dispatch({
       type: reducerCases.SET_INCOMING_VIDEO_CALL,
-      incomingVideoCall: undefined,
+      incomingVideoCall: null,
     });
   };
 

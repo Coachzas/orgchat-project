@@ -12,74 +12,7 @@ const DISPOSABLE_DOMAINS = new Set([
   "tempmail.com", "dispostable.com"
 ]);
 
-/* ----------------------------------------
- REGISTER - สมัครสมาชิก
----------------------------------------- */
-export const registerUser = async (req, res, next) => {
-  try {
-    let { email, password, firstName, lastName, about = "", image = "" } = req.body;
-
-    email = (email || "").trim().toLowerCase();
-    firstName = (firstName || "").trim();
-    lastName = (lastName || "").trim();
-    about = (about || "").trim();
-
-    if (!email || !password || !firstName || !lastName) {
-      return res.status(400).json({ status: false, msg: "ข้อมูลไม่ครบถ้วน" });
-    }
-
-    if (!EMAIL_REGEX.test(email)) {
-      return res.status(400).json({ status: false, msg: "รูปแบบอีเมลไม่ถูกต้อง" });
-    }
-
-    const domain = email.split("@")[1];
-    if (DISPOSABLE_DOMAINS.has(domain)) {
-      return res.status(400).json({ status: false, msg: "ไม่อนุญาตโดเมนอีเมลนี้" });
-    }
-
-    if (password.length < 3) {
-      return res.status(400).json({ status: false, msg: "รหัสผ่านต้องอย่างน้อย 3 ตัวอักษร" });
-    }
-    if (firstName.length < 2 || lastName.length < 2) {
-      return res.status(400).json({ status: false, msg: "ชื่อ/นามสกุลต้องอย่างน้อย 2 ตัวอักษร" });
-    }
-    if (about.length > 200) {
-      return res.status(400).json({ status: false, msg: "เกี่ยวกับคุณต้องไม่เกิน 200 ตัวอักษร" });
-    }
-
-    const existingUser = await prisma.user.findUnique({ where: { email } });
-    if (existingUser) {
-      return res.status(409).json({ status: false, msg: "อีเมล์ได้ถูกลงทะเบียนเรียบร้อยแล้ว" });
-    }
-
-    const hashedPassword = await bcrypt.hash(password, 10);
-
-    const user = await prisma.user.create({
-      data: {
-        email,
-        password: hashedPassword,
-        firstName,
-        lastName,
-        about,
-        profilePicture: image,
-        role: "user",
-      },
-      select: {
-        id: true,
-        email: true,
-        firstName: true,
-        lastName: true,
-        about: true,
-        profilePicture: true,
-        role: true,
-      },
-    });
-
-    return res.status(201).json({ status: true, msg: "ลงทะเบียนสำเร็จแล้ว", user });
-  } catch (err) {
-    next(err);
-  }
-};
+/* Registration removed - admin will create users */
 
 /* ----------------------------------------
  LOGIN - เข้าสู่ระบบ
@@ -158,6 +91,94 @@ export const getCurrentUser = async (req, res) => {
   } catch (err) {
     console.error("❌ GetCurrentUser Error:", err);
     return res.status(500).json({ status: false, msg: "เกิดข้อผิดพลาดที่เซิร์ฟเวอร์" });
+  }
+};
+
+/* ----------------------------------------
+ CHANGE PASSWORD - ผู้ใช้เปลี่ยนรหัสผ่าน
+ ---------------------------------------- */
+export const changePassword = async (req, res, next) => {
+  try {
+    const userId = req.session?.user?.id;
+    const { currentPassword, newPassword } = req.body;
+
+    if (!userId) return res.status(401).json({ status: false, msg: "ยังไม่ได้เข้าสู่ระบบ" });
+    if (!currentPassword || !newPassword) return res.status(400).json({ status: false, msg: "ข้อมูลไม่ครบ" });
+    if (newPassword.length < 3) return res.status(400).json({ status: false, msg: "รหัสผ่านต้องอย่างน้อย 3 ตัวอักษร" });
+
+    const user = await prisma.user.findUnique({ where: { id: userId } });
+    if (!user) return res.status(404).json({ status: false, msg: "ไม่พบผู้ใช้" });
+
+    const match = await bcrypt.compare(currentPassword, user.password);
+    if (!match) return res.status(400).json({ status: false, msg: "รหัสปัจจุบันไม่ถูกต้อง" });
+
+    const hashed = await bcrypt.hash(newPassword, 10);
+    await prisma.user.update({ where: { id: userId }, data: { password: hashed } });
+
+    return res.status(200).json({ status: true, msg: "เปลี่ยนรหัสผ่านสำเร็จ" });
+  } catch (err) {
+    console.error("❌ changePassword error:", err);
+    return res.status(500).json({ status: false, msg: "ไม่สามารถเปลี่ยนรหัสผ่านได้" });
+  }
+};
+
+/* ----------------------------------------
+ UPDATE PROFILE PHOTO - อัปโหลดรูปโปรไฟล์
+ ---------------------------------------- */
+export const updateProfilePhoto = async (req, res, next) => {
+  try {
+    const userId = req.session?.user?.id;
+    if (!userId) return res.status(401).json({ status: false, msg: "ยังไม่ได้เข้าสู่ระบบ" });
+    if (!req.file) return res.status(400).json({ status: false, msg: "ยังไม่ได้อัปโหลดไฟล์" });
+
+    const fileUrl = `/uploads/images/${req.file.filename}`;
+    const updated = await prisma.user.update({
+      where: { id: userId },
+      data: { profilePicture: fileUrl },
+      select: { id: true, profilePicture: true, firstName: true, lastName: true, email: true, role: true },
+    });
+
+    // update session
+    req.session.user = { ...req.session.user, profilePicture: fileUrl };
+
+    return res.status(200).json({ status: true, msg: "อัปเดตรูปโปรไฟล์สำเร็จ", user: updated });
+  } catch (err) {
+    console.error("❌ updateProfilePhoto error:", err);
+    return res.status(500).json({ status: false, msg: "ไม่สามารถอัปเดตรูปได้" });
+  }
+};
+
+/* ----------------------------------------
+ UPDATE USER PROFILE - แก้ about / firstName / lastName
+ ---------------------------------------- */
+export const updateUserProfile = async (req, res, next) => {
+  try {
+    const userId = req.session?.user?.id;
+    const { firstName, lastName, about } = req.body;
+    if (!userId) return res.status(401).json({ status: false, msg: "ยังไม่ได้เข้าสู่ระบบ" });
+
+    const data = {};
+    if (typeof firstName === "string" && firstName.trim() !== "") data.firstName = firstName.trim();
+    if (typeof lastName === "string" && lastName.trim() !== "") data.lastName = lastName.trim();
+    if (typeof about === "string") data.about = about.trim();
+
+    if (Object.keys(data).length === 0) {
+      return res.status(400).json({ status: false, msg: "ไม่มีข้อมูลให้แก้ไข" });
+    }
+
+    const updated = await prisma.user.update({
+      where: { id: userId },
+      data,
+      select: { id: true, email: true, firstName: true, lastName: true, about: true, profilePicture: true, role: true },
+    });
+
+    // update session
+    req.session.user = { ...req.session.user, firstName: updated.firstName, lastName: updated.lastName, about: updated.about, profilePicture: updated.profilePicture };
+
+    return res.status(200).json({ status: true, msg: "อัปเดตโปรไฟล์สำเร็จ", user: updated });
+  } catch (err) {
+    console.error("❌ updateUserProfile error:", err);
+    return res.status(500).json({ status: false, msg: "ไม่สามารถอัปเดตโปรไฟล์ได้" });
   }
 };
 

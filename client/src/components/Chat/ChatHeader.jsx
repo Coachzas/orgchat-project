@@ -9,9 +9,16 @@ import { reducerCases } from "@/context/constants";
 import ContextMenu from "../common/ContextMenu";
 
 function ChatHeader() {
-  const [{ currentChatUser, currentGroup, onlineUsers }, dispatch] = useStateProvider();
+  const [{ currentChatUser, currentGroup, onlineUsers, userInfo }, dispatch] = useStateProvider();
   const [contextMenuCoordinates, setContextMenuCoordinates] = useState({ x: 0, y: 0 });
   const [isContextMenuVisible, setIsContextMenuVisible] = useState(false);
+
+  // Debug: log current user role to help trace visibility issues
+  try {
+    // avoid noisy logs in production but helpful during local dev
+    // eslint-disable-next-line no-console
+    console.debug("[ChatHeader] current user role:", userInfo?.role);
+  } catch (e) {}
 
   // ---------- เปิดเมนูคลิกขวา ----------
   const showContextMenu = (e) => {
@@ -28,7 +35,7 @@ function ChatHeader() {
         setIsContextMenuVisible(false);
         // ใช้ action ที่รวมทุกอย่างไว้แล้ว
         dispatch({ type: reducerCases.SET_EXIT_CHAT });
-        console.log("✅ ออกจากห้องแชทและกลับไปหน้า ChatList แล้ว");
+        console.log(" ออกจากห้องแชทและกลับไปหน้า ChatList แล้ว");
       },
     },
   ];
@@ -128,14 +135,18 @@ function ChatHeader() {
 
       {/* ---------- ด้านขวา ---------- */}
       <div className="flex gap-6">
-        {currentGroup && (
+        {currentGroup && (userInfo?.role === "admin" || userInfo?.role === "manager") && (
           <button
-            onClick={() =>
+            onClick={() => {
+              try {
+                // eslint-disable-next-line no-console
+                console.debug("[ChatHeader] open group files for group:", currentGroup?.id);
+              } catch (e) {}
               dispatch({
                 type: reducerCases.SHOW_GROUP_FILES,
                 payload: currentGroup,
-              })
-            }
+              });
+            }}
             className="bg-icon-green hover:bg-blue-600 text-white px-3 py-1 rounded-md text-sm"
           >
             📂 ฝากไฟล์
