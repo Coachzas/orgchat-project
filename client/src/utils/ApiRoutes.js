@@ -13,6 +13,9 @@ export const CHECK_AUTH_ROUTE = `${AUTH_ROUTE}/me`;
 
 // 📞 Token for Call
 export const GET_CALL_TOKEN = (userId) => `${AUTH_ROUTE}/generate-token/${userId}`;
+// 👥 Token สำหรับโทรกลุ่ม
+export const GET_CALL_TOKEN_GROUP = (userId) => `/api/group-call/token/${userId}`;
+
 
 // 👤 CONTACTS ROUTES
 export const MESSAGE_ROUTE = `/api/messages`;

@@ -2,7 +2,11 @@ import React, { useEffect, useRef, useState } from "react";
 import ChatList from "./Chatlist/ChatList";
 import Empty from "./Empty";
 import axios from "axios";
-import { SOCKET_HOST, CHECK_AUTH_ROUTE, GET_MESSAGES_ROUTE_1V1 } from "@/utils/ApiRoutes";
+import {
+  SOCKET_HOST,
+  CHECK_AUTH_ROUTE,
+  GET_MESSAGES_ROUTE_1V1,
+} from "@/utils/ApiRoutes";
 import { useRouter } from "next/router";
 import { useStateProvider } from "@/context/StateContext";
 import { reducerCases } from "@/context/constants";
@@ -10,8 +14,10 @@ import Chat from "./Chat/Chat";
 import SearchMessages from "./Chat/SearchMessages";
 import { io } from "socket.io-client";
 import CallContainer from "./Call/CallContainer";
+import GroupCallContainer from "./Call/GroupCallContainer";
 import IncomingVideoCall from "./common/IncomingVideoCall";
 import IncomingVoiceCall from "./common/IncomingCall";
+import IncomingGroupCall from "./common/IncomingGroupCall";
 
 function Main() {
   const router = useRouter();
@@ -23,16 +29,18 @@ function Main() {
       messagesSearch,
       videoCall,
       voiceCall,
+      groupCall,
       incomingVoiceCall,
       incomingVideoCall,
+      incomingGroupCall,
     },
     dispatch,
   ] = useStateProvider();
 
   const socket = useRef(null);
-
-  // � ตรวจสอบ session ปัจจุบัน เมื่อเปิดแอป (ถ้าหน้าตัวแปร userInfo ยังว่าง)
   const [checkingAuth, setCheckingAuth] = useState(true);
+
+  // ✅ ตรวจสอบ session
   useEffect(() => {
     const checkSession = async () => {
       try {
@@ -43,33 +51,28 @@ function Main() {
           }
         }
       } catch (err) {
-        // ถ้าไม่มี session จะถูก redirect โดย useEffect ด้านล่าง (เมื่อ checkingAuth = false)
-        console.log("No active session or unable to fetch current user", err?.response?.status || err?.message);
+        console.warn("⚠️ No active session:", err?.response?.status || err?.message);
       } finally {
         setCheckingAuth(false);
       }
     };
-
     checkSession();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // �🔹 ตรวจสอบผู้ใช้ ถ้าไม่มีให้กลับไป login (แต่รอการตรวจสอบ session เริ่มต้นก่อน)
+  // ✅ ถ้าไม่มี session → กลับ login
   useEffect(() => {
     if (!userInfo && !checkingAuth) router.push("/login");
   }, [userInfo, router, checkingAuth]);
 
-  // 🔹 เชื่อมต่อ socket.io และฟัง event ทั้งหมด (role, message)
+  // ✅ เชื่อม socket.io
   useEffect(() => {
     if (userInfo && !socket.current) {
-      // Connect directly to backend socket host so socket.io connects to the server (not Next dev server)
       socket.current = io(SOCKET_HOST, { withCredentials: true });
       socket.current.emit("add-user", userInfo.id);
       dispatch({ type: reducerCases.SET_SOCKET, socket });
 
-      //  ฟัง event อัปเดต role (เรียลไทม์)
+      // 🎯 role updated realtime
       socket.current.on("role-updated", (data) => {
-        console.log("📡 [Main] role-updated:", data);
         if (userInfo?.id === data.id) {
           dispatch({
             type: reducerCases.SET_USER_INFO,
@@ -79,17 +82,11 @@ function Main() {
         }
       });
 
-      //  ฟัง event รับข้อความแบบเรียลไทม์ (1-1 messages)
+      // 💬 ข้อความใหม่ realtime
       socket.current.on("msg-receive", ({ message }) => {
-        console.log("📨 ได้รับข้อความใหม่จาก socket:", message);
-        // Accept all msg-receive events (including messages sent by this user) because server is authoritative and emits saved messages for both sender and recipient.
-        dispatch({
-          type: reducerCases.ADD_MESSAGE,
-          newMessage: message,
-        });
+        dispatch({ type: reducerCases.ADD_MESSAGE, newMessage: message });
       });
 
-      //  cleanup ป้องกัน event ซ้ำ
       return () => {
         if (socket.current) {
           socket.current.off("role-updated");
@@ -101,7 +98,7 @@ function Main() {
     }
   }, [userInfo, dispatch]);
 
-  // 🔹 โหลดประวัติแชท (1-1)
+  // ✅ โหลดข้อความ 1v1
   useEffect(() => {
     const getMessages = async () => {
       if (!userInfo?.id || !currentChatUser?.id) return;
@@ -109,24 +106,21 @@ function Main() {
         const { data } = await axios.get(
           GET_MESSAGES_ROUTE_1V1(userInfo.id, currentChatUser.id)
         );
-        if (Array.isArray(data)) {
+        if (Array.isArray(data))
           dispatch({ type: reducerCases.SET_MESSAGES, messages: data });
-        }
-      } catch (error) {
-        console.error("Error fetching messages:", error);
+      } catch (err) {
+        console.error("Error fetching messages:", err);
       }
     };
-
     if (currentChatUser?.id) getMessages();
   }, [currentChatUser, userInfo, dispatch]);
 
-  // 🔹 ฟัง event การโทรเข้า
+  // ✅ ฟัง event โทรเข้า
   useEffect(() => {
     if (!socket.current) return;
 
-    // 🎧 สายเข้า (เสียง)
+    // 🎧 โทรเสียง
     socket.current.on("incoming-voice-call", (data) => {
-      console.log("📥 มีสายเข้า (เสียง):", data);
       dispatch({
         type: reducerCases.SET_INCOMING_VOICE_CALL,
         incomingVoiceCall: {
@@ -141,9 +135,8 @@ function Main() {
       });
     });
 
-    // 🎥 สายเข้า (วิดีโอ)
+    // 🎥 โทรวิดีโอ
     socket.current.on("incoming-video-call", (data) => {
-      console.log("📥 มีสายเข้า (วิดีโอ):", data);
       dispatch({
         type: reducerCases.SET_INCOMING_VIDEO_CALL,
         incomingVideoCall: {
@@ -158,29 +151,51 @@ function Main() {
       });
     });
 
-    //  cleanup
+    // 👥 โทรกลุ่ม
+    socket.current.on("incoming-group-call", (data) => {
+      console.log("📥 [Main] สายเข้าแบบกลุ่ม:", data);
+      dispatch({
+        type: reducerCases.SET_INCOMING_GROUP_CALL,
+        incomingGroupCall: {
+          groupId: data.groupId,
+          groupName: data.groupName,
+          from: data.from,
+          callType: data.callType,
+          roomId: data.roomId,
+          type: "in-coming",
+        },
+      });
+    });
+
     return () => {
       if (socket.current) {
         socket.current.off("incoming-voice-call");
         socket.current.off("incoming-video-call");
+        socket.current.off("incoming-group-call");
       }
     };
   }, [socket, dispatch]);
 
+  // ✅ แสดง UI
   return (
     <>
-      {/* Popup สายเข้า */}
+      {/* Popup โทรเข้า */}
       {incomingVideoCall && <IncomingVideoCall />}
       {incomingVoiceCall && <IncomingVoiceCall />}
+      {incomingGroupCall && <IncomingGroupCall />}
 
-      {/* ถ้ามีสายอยู่ แสดงหน้าสาย */}
-      {(videoCall || voiceCall) ? (
-        <div className="h-screen w-screen max-h-full overflow-hidden">
+      {/* แสดงหน้าการโทร */}
+      {videoCall || voiceCall ? (
+        <div className="h-screen w-screen overflow-hidden">
           <CallContainer />
         </div>
+      ) : groupCall ? (
+        <div className="h-screen w-screen overflow-hidden">
+          <GroupCallContainer data={groupCall} />
+        </div>
       ) : (
-        // หน้าหลัก (Chat + ChatList)
-        <div className="grid grid-cols-main h-screen w-screen max-h-screen max-w-full overflow-hidden">
+        // 🔹 หน้าหลัก
+        <div className="grid grid-cols-main h-screen w-screen overflow-hidden">
           <ChatList />
           <div className="flex justify-center items-center w-full">
             {currentChatUser || currentGroup ? (
