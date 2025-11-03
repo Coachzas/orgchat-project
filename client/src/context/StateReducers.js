@@ -16,10 +16,10 @@ export const initialState = {
   onlineUsers: [],
   filteredContacts: [],
 
-  videoCall: undefined,
-  voiceCall: undefined,
-  incomingVoiceCall: undefined,
-  incomingVideoCall: undefined,
+  videoCall: null,
+  voiceCall: null,
+  incomingVoiceCall: null,
+  incomingVideoCall: null,
 };
 
 const reducer = (state, action) => {
@@ -100,10 +100,10 @@ const reducer = (state, action) => {
     case reducerCases.END_CALL:
       return {
         ...state,
-        voiceCall: undefined,
-        videoCall: undefined,
-        incomingVideoCall: undefined,
-        incomingVoiceCall: undefined,
+        voiceCall: null,
+        videoCall: null,
+        incomingVideoCall: null,
+        incomingVoiceCall: null,
       };
 
     case reducerCases.SET_EXIT_CHAT:

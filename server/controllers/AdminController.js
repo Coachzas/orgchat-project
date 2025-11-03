@@ -32,7 +32,6 @@ export const updateUserRole = async (req, res) => {
     const { id } = req.params;
     const { role } = req.body;
 
-    //  ตรวจสอบ role ให้ถูกต้อง
     if (!["employee", "admin", "manager"].includes(role)) {
       return res.status(400).json({ error: "role ไม่ถูกต้อง" });
     }
@@ -49,7 +48,6 @@ export const updateUserRole = async (req, res) => {
       },
     });
 
-    //  Broadcast event เรียลไทม์
     const io = req.app.get("io");
     if (io) {
       io.emit("role-updated", {
@@ -93,7 +91,6 @@ export const createAnnouncement = async (req, res) => {
       },
     });
 
-    //  Broadcast ไปทุก client
     const io = req.app.get("io");
     if (io) {
       io.emit("announcement", newAnnouncement);
@@ -119,15 +116,18 @@ export const createGroupByAdmin = async (req, res) => {
     const creatorRole = req.session.user?.role;
     const creatorId = req.session.user?.id;
 
-    //  ตรวจสอบสิทธิ์ก่อนสร้างกลุ่ม
-    if (!["admin", "manager", "employee"].includes(creatorRole)) {
+    //  อนุญาตเฉพาะ admin และ manager เท่านั้น
+    if (!["admin", "manager"].includes(creatorRole)) {
       return res.status(403).json({ error: "คุณไม่มีสิทธิ์สร้างกลุ่ม" });
     }
 
-    if (!name || !memberIds || !Array.isArray(memberIds) || memberIds.length === 0) {
-      return res.status(400).json({ error: "กรุณาระบุชื่อกลุ่มและสมาชิกอย่างน้อยหนึ่งคน" });
+    if (!name || !Array.isArray(memberIds) || memberIds.length === 0) {
+      return res
+        .status(400)
+        .json({ error: "กรุณาระบุชื่อกลุ่มและสมาชิกอย่างน้อยหนึ่งคน" });
     }
 
+    //  เพิ่มผู้สร้างกลุ่มเข้าเป็นสมาชิกด้วย
     if (!memberIds.includes(creatorId)) {
       memberIds.push(creatorId);
     }
@@ -143,9 +143,10 @@ export const createGroupByAdmin = async (req, res) => {
       include: { members: { include: { user: true } } },
     });
 
-    console.log(` [AdminController] ${creatorRole} สร้างกลุ่ม "${name}" สำเร็จ`);
+    console.log(
+      ` [AdminController] ${creatorRole} (${creatorId}) สร้างกลุ่ม "${name}" สำเร็จ`
+    );
 
-    //  แจ้ง event สร้างกลุ่มใหม่แบบเรียลไทม์
     const io = req.app.get("io");
     if (io) io.emit("group-created", newGroup);
 
@@ -160,18 +161,49 @@ export const createGroupByAdmin = async (req, res) => {
 };
 
 /**
+ * 🧩 ดึงรายชื่อผู้ใช้ทั้งหมด (ทุก role ใช้ได้ - สำหรับตอนสร้างกลุ่ม)
+ */
+export const getAllUsersPublic = async (req, res) => {
+  try {
+    const users = await prisma.user.findMany({
+      select: {
+        id: true,
+        firstName: true,
+        lastName: true,
+        role: true,
+        profilePicture: true,
+      },
+      orderBy: { id: "asc" },
+    });
+    res.status(200).json(users);
+  } catch (error) {
+    console.error("❌ [AdminController] getAllUsersPublic:", error);
+    res.status(500).json({ error: "ไม่สามารถดึงรายชื่อผู้ใช้ได้" });
+  }
+};
+
+/**
  * 👤 สร้างผู้ใช้โดย Admin
  */
 export const createUserByAdmin = async (req, res) => {
   try {
-    const { email, password, firstName, lastName, role = "employee", about = "", profilePicture = "/default-avatar.png" } = req.body;
+    const {
+      email,
+      password,
+      firstName,
+      lastName,
+      role = "employee",
+      about = "",
+      profilePicture = "/default-avatar.png",
+    } = req.body;
 
-    // validation
     if (!email || !password || !firstName || !lastName) {
       return res.status(400).json({ error: "กรอกข้อมูลให้ครบถ้วน" });
     }
 
-    const exist = await prisma.user.findUnique({ where: { email: email.trim().toLowerCase() } });
+    const exist = await prisma.user.findUnique({
+      where: { email: email.trim().toLowerCase() },
+    });
     if (exist) return res.status(409).json({ error: "อีเมลนี้ถูกใช้งานแล้ว" });
 
     const hashed = await bcrypt.hash(password, 10);
@@ -196,7 +228,6 @@ export const createUserByAdmin = async (req, res) => {
       },
     });
 
-    // broadcast event
     const io = req.app.get("io");
     if (io) io.emit("user-created", newUser);
 

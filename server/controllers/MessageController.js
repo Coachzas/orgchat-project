@@ -157,6 +157,38 @@ export const addGroupNote = async (req, res, next) => {
   }
 };
 
+export const deleteGroupNote = async (req, res) => {
+  try {
+    const { groupId, noteId } = req.params;
+    const role = req.session?.user?.role;
+
+    if (role !== "admin") {
+      return res.status(403).json({ error: "อนุญาตเฉพาะ admin เท่านั้น" });
+    }
+
+    const existingNote = await prisma.message.findUnique({
+      where: { id: parseInt(noteId) },
+    });
+
+    if (!existingNote || existingNote.groupId !== parseInt(groupId)) {
+      return res.status(404).json({ error: "ไม่พบโน้ตที่ต้องการลบ" });
+    }
+
+    await prisma.message.delete({ where: { id: parseInt(noteId) } });
+
+    // 🔔 Broadcast event ให้ทุก client ในกลุ่มลบโน้ตนี้ออก
+    if (global.io) {
+      console.log("📢 Emit group-note-deleted:", groupId, noteId);
+      global.io.to(`group_${groupId}`).emit("group-note-deleted", { noteId });
+    }
+
+    return res.status(200).json({ message: "ลบโน้ตสำเร็จ", noteId });
+  } catch (error) {
+    console.error("❌ [deleteGroupNote] Error:", error);
+    return res.status(500).json({ error: "ไม่สามารถลบโน้ตได้" });
+  }
+};
+
 //  ฟังก์ชันส่งข้อความแบบภาพ
 export const addImageMessage = async (req, res, next) => {
   try {
@@ -373,5 +405,33 @@ export const addGroupMessage = async (req, res, next) => {
     console.error("❌ addGroupMessage error:", err);
     next(err);
     return;
+  }
+};
+
+export const getLatestGroupNote = async (req, res) => {
+  try {
+    const { groupId } = req.params;
+
+    const latestNote = await prisma.message.findFirst({
+      where: {
+        groupId: parseInt(groupId),
+        type: "note",
+      },
+      orderBy: { createdAt: "desc" },
+      include: {
+        sender: {
+          select: {
+            firstName: true,
+            lastName: true,
+            profilePicture: true,
+          },
+        },
+      },
+    });
+
+    res.status(200).json(latestNote || null);
+  } catch (error) {
+    console.error("❌ [getLatestGroupNote] Error:", error);
+    res.status(500).json({ error: "ไม่สามารถโหลดประกาศล่าสุดได้" });
   }
 };

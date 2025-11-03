@@ -6,6 +6,7 @@ import {
   createAnnouncement,
   createGroupByAdmin,
   createUserByAdmin,
+  getAllUsersPublic,
 } from "../controllers/AdminController.js";
 
 const router = express.Router();
@@ -24,5 +25,8 @@ router.post("/announcement", isAuthenticated, isAdmin, createAnnouncement);
 
 //  สร้างกลุ่มโดย admin
 router.post("/groups", isAuthenticated, isAdmin, createGroupByAdmin);
+
+// ดึงผู้ใช้ตอน admin/manager สร้างกลุ่ม
+router.get("/users/public", isAuthenticated, getAllUsersPublic);
 
 export default router;

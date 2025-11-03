@@ -147,7 +147,12 @@ function Main() {
       dispatch({
         type: reducerCases.SET_INCOMING_VIDEO_CALL,
         incomingVideoCall: {
-          ...data,
+          id: data.from.id,
+          firstName: data.from.firstName,
+          lastName: data.from.lastName,
+          profilePicture: data.from.profilePicture,
+          callType: data.callType,
+          roomId: data.roomId,
           type: "in-coming",
         },
       });

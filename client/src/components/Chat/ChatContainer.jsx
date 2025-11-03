@@ -8,7 +8,12 @@ import FileMessage from "./FileMessage";
 import GroupFiles from "./GroupFile";
 import AdminNote from "./AdminNote";
 import axios from "axios";
-import { GET_GROUP_MESSAGES_ROUTE, GET_MESSAGES_ROUTE, GET_ALL_CONTACTS } from "@/utils/ApiRoutes";
+import {
+  GET_GROUP_MESSAGES_ROUTE,
+  GET_MESSAGES_ROUTE,
+  GET_ALL_CONTACTS,
+  GET_LATEST_GROUP_NOTE_ROUTE, //  เพิ่ม
+} from "@/utils/ApiRoutes";
 import { reducerCases } from "@/context/constants";
 import IncomingCall from "../common/IncomingCall";
 import Avatar from "../common/Avatar";
@@ -31,6 +36,23 @@ function ChatContainer() {
 
   const [loading, setLoading] = useState(false);
   const [showAdminNotes, setShowAdminNotes] = useState(false);
+  const [latestNote, setLatestNote] = useState(null); //  ประกาศล่าสุด
+
+  // 🟢 โหลดประกาศล่าสุด
+  useEffect(() => {
+    if (!currentGroup?.id) return;
+    const fetchLatestNote = async () => {
+      try {
+        const res = await axios.get(GET_LATEST_GROUP_NOTE_ROUTE(currentGroup.id), {
+          withCredentials: true,
+        });
+        setLatestNote(res.data);
+      } catch (err) {
+        console.error("❌ โหลดประกาศล่าสุดล้มเหลว:", err);
+      }
+    };
+    fetchLatestNote();
+  }, [currentGroup]);
 
   //  เพิ่มผู้ใช้เข้า online list เมื่อ socket เชื่อมต่อ
   useEffect(() => {
@@ -44,7 +66,7 @@ function ChatContainer() {
   useEffect(() => {
     if (socket?.current) {
       if (currentGroup) {
-        socket.current.emit("leave-all-groups"); // ออกจากทุกกลุ่มก่อน
+        socket.current.emit("leave-all-groups");
         socket.current.emit("join-group", currentGroup.id);
         console.log("📡 Joined group:", currentGroup.id);
       }
@@ -70,21 +92,13 @@ function ChatContainer() {
 
   //  โหลดข้อความ 1-1 (ถ้าอยู่ในแชทส่วนตัว)
   useEffect(() => {
-    // ❗ ป้องกันกรณี userInfo หรือ currentChatUser ยังไม่พร้อม
     if (!currentChatUser?.id || !userInfo?.id || currentGroup) return;
-
     setLoading(true);
     const fetchPrivateMessages = async () => {
       try {
-        console.log("📨 Fetching private messages:", {
-          from: userInfo.id,
-          to: currentChatUser.id,
-        });
-
         const res = await axios.get(
           `${GET_MESSAGES_ROUTE}/${userInfo.id}/${currentChatUser.id}`
         );
-
         dispatch({ type: reducerCases.SET_MESSAGES, messages: res.data });
       } catch (err) {
         console.error("❌ โหลดข้อความ 1-1 ล้มเหลว:", err);
@@ -92,7 +106,6 @@ function ChatContainer() {
         setLoading(false);
       }
     };
-
     fetchPrivateMessages();
   }, [currentChatUser, currentGroup, dispatch, userInfo]);
 
@@ -103,17 +116,17 @@ function ChatContainer() {
     const handleGroupMessageReceive = async ({ message }) => {
       if (message?.groupId !== currentGroup?.id) return;
 
-      // If sender object missing, try to fetch from contacts and attach it so UI can render immediately
       if (!message.sender) {
         try {
           const res = await axios.get(GET_ALL_CONTACTS);
-          // server returns grouped object { users: { A: [...], B: [...] } }
           const grouped = res.data?.users;
           const contacts = grouped ? Object.values(grouped).flat() : res.data || [];
-          const found = contacts.find((u) => String(u.id) === String(message.senderId) || String(u.userId) === String(message.senderId));
-          if (found) {
-            message.sender = found;
-          }
+          const found = contacts.find(
+            (u) =>
+              String(u.id) === String(message.senderId) ||
+              String(u.userId) === String(message.senderId)
+          );
+          if (found) message.sender = found;
         } catch (err) {
           console.warn("Could not fetch contacts to resolve sender:", err);
         }
@@ -123,13 +136,10 @@ function ChatContainer() {
     };
 
     socket.current.on("group-message-receive", handleGroupMessageReceive);
-
     return () => {
-      if (socket?.current) {
+      if (socket?.current)
         socket.current.off("group-message-receive", handleGroupMessageReceive);
-      }
     };
-
   }, [socket, currentGroup, currentChatUser, dispatch, userInfo]);
 
   return (
@@ -137,8 +147,27 @@ function ChatContainer() {
       {incomingVoiceCall && <IncomingCall />}
 
       <div className="h-[80vh] w-full relative flex-grow overflow-y-auto overflow-x-hidden custom-scrollbar">
-        <div className="bg-chat-background bg-fixed h-full w-full opacity-5 fixed left-0 top-0 z-0"></div>
+        <div className="bg-chat-background bg-fixed h-full w-full opacity-5 fixed left-0 top-0 z-0 pointer-events-none"></div>
 
+        {/*  แสดงประกาศแอดมิน */}
+        {latestNote && currentGroup && (
+          <div className="bg-yellow-500/15 border border-yellow-400/60 text-yellow-300
+                  px-3 py-1.5 rounded-lg mx-6 mb-2 shadow-sm
+                  flex items-center gap-2 sticky top-0 z-40 backdrop-blur-sm">
+            <span className="text-lg">📢</span>
+            <div className="flex flex-col">
+              <span className="text-sm text-white font-medium">
+                {latestNote.message}
+              </span>
+              <span className="text-[11px] text-yellow-200 font-light">
+                โดย {latestNote.sender?.firstName} {latestNote.sender?.lastName} •{" "}
+                {new Date(latestNote.createdAt).toLocaleString()}
+              </span>
+            </div>
+          </div>
+        )}
+
+        {/* ปุ่มดูไฟล์/โน้ต */}
         {currentGroup && (
           <div className="flex justify-end mb-3 mr-6 gap-3">
             <button
@@ -155,7 +184,10 @@ function ChatContainer() {
 
             {userInfo?.role === "admin" && (
               <button
-                onClick={() => setShowAdminNotes(true)}
+                onClick={() => {
+                  console.log("🟡 Admin Notes clicked");
+                  setShowAdminNotes(true);
+                }}
                 className="bg-yellow-500 hover:bg-yellow-600 text-black font-medium px-3 py-1 rounded-lg transition"
               >
                 📝 Admin Notes
@@ -164,6 +196,7 @@ function ChatContainer() {
           </div>
         )}
 
+        {/* Modal ไฟล์กลุ่ม */}
         {showGroupFiles && currentGroup && (
           <GroupFiles
             groupId={currentGroup.id}
@@ -171,10 +204,18 @@ function ChatContainer() {
           />
         )}
 
+        {/* Modal โน้ตแอดมิน */}
         {showAdminNotes && currentGroup && userInfo?.role === "admin" && (
-          <AdminNote groupId={currentGroup.id} onClose={() => setShowAdminNotes(false)} />
+          <>
+            <AdminNote
+              groupId={currentGroup.id}
+              onClose={() => setShowAdminNotes(false)}
+            />
+            {console.log("🟢 Rendering AdminNote for group:", currentGroup?.id)}
+          </>
         )}
 
+        {/* ข้อความแชท */}
         <div className="mx-10 my-6 relative bottom-0 z-40 left-0">
           {loading ? (
             <p className="text-gray-400 text-center">กำลังโหลดข้อความ...</p>
@@ -184,40 +225,43 @@ function ChatContainer() {
                 messages.map((message, index) => {
                   const isOwn = message.senderId === userInfo?.id;
                   const sender = message.sender || null;
-                  // standard bubble width: use larger width for files so file names have room
                   const bubbleWrapperClass =
                     message.type === "file"
                       ? "max-w-[78%]"
                       : currentGroup
-                        ? "max-w-[70%]" // กลุ่ม (มี avatar ด้านซ้าย)
-                        : "max-w-none w-[92%]"; // แชทเดี่ยว (ไม่มี avatar)
-                  // Prefer first + last name, then name, then email. If no sender object, don't render a placeholder.
+                        ? "max-w-[70%]"
+                        : "max-w-none w-[92%]";
                   const senderName = sender
-                    ? `${(sender.firstName || "").trim()} ${(sender.lastName || "").trim()}`.trim() || sender.name || sender.email
+                    ? `${(sender.firstName || "").trim()} ${(sender.lastName || "").trim()}`.trim() ||
+                    sender.name ||
+                    sender.email
                     : null;
 
                   return (
                     <div
                       key={
-                        message.id || `${message.senderId}-${message.createdAt || index}`
+                        message.id ||
+                        `${message.senderId}-${message.createdAt || index}`
                       }
-                      className={`flex ${isOwn ? "justify-end" : "justify-start"} mb-2 ${!currentGroup
-                        ? isOwn
-                          ? "mr-[6px]" // margin ขวาเฉพาะแชทเดี่ยวฝั่งเรา
-                          : "ml-[6px]" // margin ซ้ายเฉพาะแชทเดี่ยวฝั่งคู่สนทนา
-                        : ""
+                      className={`flex ${isOwn ? "justify-end" : "justify-start"
+                        } mb-2 ${!currentGroup
+                          ? isOwn
+                            ? "mr-[6px]"
+                            : "ml-[6px]"
+                          : ""
                         }`}
                     >
-
                       <div
-                        className={`flex items-start gap-1 ${isOwn ? "flex-row-reverse" : "flex-row"}`}
+                        className={`flex items-start gap-1 ${isOwn ? "flex-row-reverse" : "flex-row"
+                          }`}
                       >
-                        {/* Sender avatar + name for group messages */}
                         {message.groupId && sender && (
                           <div className="flex flex-col items-center text-xs w-[3.5rem]">
                             <Avatar
                               type="sm"
-                              image={sender.profilePicture || "/default-avatar.png"}
+                              image={
+                                sender.profilePicture || "/default-avatar.png"
+                              }
                             />
                             {senderName && (
                               <div className="text-white text-[12px] mt-1 text-center truncate px-1">
@@ -227,23 +271,34 @@ function ChatContainer() {
                           </div>
                         )}
 
-                        {/* Message bubble area */}
                         <div className={bubbleWrapperClass}>
                           {message.type === "text" && (
-                            <div className={`${isOwn ? "self-end" : "self-start"}`}>
+                            <div
+                              className={`${isOwn ? "self-end" : "self-start"}`}
+                            >
                               <div
-                                className={`${isOwn ? "bg-outgoing-background text-white" : "bg-incoming-background text-white"} text-sm leading-[1.4] rounded-[14px] px-[14px] py-[10px] break-words`}
-                                style={{ wordBreak: "break-word", overflowWrap: "anywhere" }}
+                                className={`${isOwn
+                                    ? "bg-outgoing-background text-white"
+                                    : "bg-incoming-background text-white"
+                                  } text-sm leading-[1.4] rounded-[14px] px-[14px] py-[10px] break-words`}
+                                style={{
+                                  wordBreak: "break-word",
+                                  overflowWrap: "anywhere",
+                                }}
                               >
                                 <span className="whitespace-pre-wrap break-words">
                                   {message?.message}
                                 </span>
                                 <div className="flex justify-end items-center gap-1 mt-2">
                                   <span className="text-bubble-meta text-[11px]">
-                                    {message.createdAt ? calculateTime(message.createdAt) : ""}
+                                    {message.createdAt
+                                      ? calculateTime(message.createdAt)
+                                      : ""}
                                   </span>
                                   {isOwn && (
-                                    <MessageStatus messageStatus={message.messageStatus} />
+                                    <MessageStatus
+                                      messageStatus={message.messageStatus}
+                                    />
                                   )}
                                 </div>
                               </div>
@@ -256,7 +311,10 @@ function ChatContainer() {
                             <VoiceMessage message={message} />
                           )}
                           {message.type === "file" && (
-                            <FileMessage message={message} isOwnMessage={isOwn} />
+                            <FileMessage
+                              message={message}
+                              isOwnMessage={isOwn}
+                            />
                           )}
                         </div>
                       </div>
@@ -264,7 +322,9 @@ function ChatContainer() {
                   );
                 })
               ) : (
-                <p className="text-gray-400 text-center">ยังไม่มีข้อความในห้องนี้</p>
+                <p className="text-gray-400 text-center">
+                  ยังไม่มีข้อความในห้องนี้
+                </p>
               )}
             </div>
           )}

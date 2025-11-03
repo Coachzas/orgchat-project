@@ -33,7 +33,7 @@ function IncomingCall() {
     // 🔹 ล้าง popup หลังรับสาย
     dispatch({
       type: reducerCases.SET_INCOMING_VOICE_CALL,
-      incomingVoiceCall: undefined,
+      incomingVoiceCall: null,
     });
   };
 
@@ -53,7 +53,7 @@ function IncomingCall() {
     dispatch({ type: reducerCases.END_CALL });
     dispatch({
       type: reducerCases.SET_INCOMING_VOICE_CALL,
-      incomingVoiceCall: undefined,
+      incomingVoiceCall: null,
     });
   };
 

@@ -1,7 +1,7 @@
-// client/src/components/Chat/GroupFiles.jsx
 import React, { useEffect, useState } from "react";
 import axios from "axios";
 import { useStateProvider } from "@/context/StateContext";
+import ReactDOM from "react-dom"; //  เพิ่มบรรทัดนี้
 
 export default function GroupFiles({ groupId, onClose }) {
   const [{ userInfo }] = useStateProvider();
@@ -12,7 +12,6 @@ export default function GroupFiles({ groupId, onClose }) {
   const [uploading, setUploading] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
 
-  //  โหลดไฟล์ทั้งหมดในกลุ่ม
   const fetchFiles = async () => {
     try {
       const res = await axios.get(`/api/groups/${groupId}/files`, { withCredentials: true });
@@ -30,7 +29,6 @@ export default function GroupFiles({ groupId, onClose }) {
     if (groupId) fetchFiles();
   }, [groupId]);
 
-  // 📤 ฟังก์ชันอัปโหลดไฟล์ใหม่
   const handleUpload = async (e) => {
     e.preventDefault();
     if (!selectedFile) return alert("กรุณาเลือกไฟล์ก่อน");
@@ -44,24 +42,29 @@ export default function GroupFiles({ groupId, onClose }) {
         withCredentials: true,
         headers: { "Content-Type": "multipart/form-data" },
       });
-        alert(res.data?.message || "อัปโหลดสำเร็จ");
+      alert(res.data?.message || "อัปโหลดสำเร็จ");
       setNote("");
       setSelectedFile(null);
-      fetchFiles(); // โหลดใหม่หลังอัปโหลด
+      fetchFiles();
     } catch (err) {
       console.error("❌ อัปโหลดล้มเหลว:", err);
-        // Show server message if available (e.g., 403 with reason)
-        const serverMsg = err?.response?.data?.error || err?.response?.data?.message;
-        alert(serverMsg || "เกิดข้อผิดพลาดในการอัปโหลด");
+      const serverMsg = err?.response?.data?.error || err?.response?.data?.message;
+      alert(serverMsg || "เกิดข้อผิดพลาดในการอัปโหลด");
     } finally {
       setUploading(false);
     }
   };
 
-  return (
-    <div className="fixed inset-0 bg-black bg-opacity-60 flex justify-center items-center z-50">
-      <div className="w-[700px] max-h-[90vh] overflow-y-auto bg-panel-header-background text-primary-strong rounded-2xl shadow-xl p-6">
-        {/* Header */}
+  //  ใช้ React Portal เพื่อให้ modal ลอยอยู่บนสุด
+  return ReactDOM.createPortal(
+    <div
+      className="fixed inset-0 z-[9999] bg-black/70 backdrop-blur-sm flex justify-center items-center animate-fadeIn"
+      onClick={onClose} //  คลิกพื้นหลังเพื่อปิด
+    >
+      <div
+        className="w-[700px] max-h-[90vh] overflow-y-auto bg-panel-header-background text-primary-strong rounded-2xl shadow-xl p-6 animate-slideUp"
+        onClick={(e) => e.stopPropagation()} //  ป้องกันคลิกในกล่องแล้วปิด
+      >
         <div className="flex justify-between items-center mb-4">
           <h2 className="text-xl font-semibold text-primary-strong flex items-center gap-2">
             📂 ไฟล์ของกลุ่ม
@@ -74,14 +77,10 @@ export default function GroupFiles({ groupId, onClose }) {
           </button>
         </div>
 
-        {/* Error banner when fetching files failed due to auth/permission */}
         {errorMsg && (
-          <div className="mb-4 p-3 rounded bg-red-600 text-white">
-            {errorMsg}
-          </div>
+          <div className="mb-4 p-3 rounded bg-red-600 text-white">{errorMsg}</div>
         )}
 
-        {/* Upload Form - only visible to admin and manager */}
         {(userInfo?.role === "admin" || userInfo?.role === "manager") ? (
           <form
             onSubmit={handleUpload}
@@ -117,10 +116,8 @@ export default function GroupFiles({ groupId, onClose }) {
           </div>
         )}
 
-        {/* Divider */}
         <hr className="border-conversation-border my-4" />
 
-        {/* Files List */}
         {loading ? (
           <p className="text-secondary">⏳ กำลังโหลดไฟล์...</p>
         ) : files.length === 0 ? (
@@ -150,7 +147,12 @@ export default function GroupFiles({ groupId, onClose }) {
                       </p>
                     )}
                   </div>
-                  <a href={file.fileUrl} target="_blank" rel="noopener noreferrer" className="text-blue-400 hover:underline font-medium">
+                  <a
+                    href={file.fileUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-blue-400 hover:underline font-medium"
+                  >
                     🔗 เปิดไฟล์
                   </a>
                 </div>
@@ -159,6 +161,7 @@ export default function GroupFiles({ groupId, onClose }) {
           </div>
         )}
       </div>
-    </div>
+    </div>,
+    document.body //  render ออกจาก layout หลัก
   );
 }

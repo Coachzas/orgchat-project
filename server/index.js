@@ -184,6 +184,46 @@ io.on("connection", (socket) => {
     socket.emit("group-message-receive", msgData);
   });
 
+  // 📝 เพิ่มประกาศโน้ตของแอดมิน (Realtime)
+socket.on("group-note-send", async (data) => {
+  const { groupId, from, message } = data;
+  console.log(`📝 [Realtime] โน้ตใหม่จาก admin (${from}) ใน group_${groupId}`);
+
+  const baseNote = {
+    id: Date.now(),
+    senderId: from,
+    groupId,
+    message,
+    createdAt: new Date().toISOString(),
+  };
+
+  // ดึงข้อมูล sender เพื่อแสดงชื่อใน client
+  let senderObj = null;
+  try {
+    const user = await prisma.user.findUnique({
+      where: { id: parseInt(from) },
+      select: { id: true, firstName: true, lastName: true, profilePicture: true },
+    });
+    if (user) senderObj = user;
+  } catch (err) {
+    console.warn("ไม่สามารถดึงข้อมูล sender ได้:", err);
+  }
+
+  const notePayload = { note: { ...baseNote, sender: senderObj } };
+
+  // ส่งให้สมาชิกกลุ่มทุกคน (ยกเว้นผู้ส่ง)
+  socket.to(`group_${groupId}`).emit("group-note-receive", notePayload);
+
+  // ส่งกลับให้ผู้ส่งด้วย (เพื่ออัปเดตตนเอง)
+  socket.emit("group-note-receive", notePayload);
+});
+
+// 🗑️ เมื่อโน้ตถูกลบ
+socket.on("group-note-delete", ({ groupId, noteId }) => {
+  socket.to(`group_${groupId}`).emit("group-note-deleted", { noteId });
+  socket.emit("group-note-deleted", { noteId });
+});
+
   // 🔊 Voice & Video Calls
   // -----------------------------------------------
 

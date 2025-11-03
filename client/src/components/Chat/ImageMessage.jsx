@@ -8,11 +8,11 @@ function ImageMessage({ message }) {
 
   return (
     <div className={`flex ${message.senderId === userInfo?.id ? "justify-end" : "justify-start"}`}>
-      <div className={`${message.senderId === userInfo?.id ? "bg-outgoing-background text-white" : "bg-incoming-background text-white"} rounded-[14px] px-[14px] py-[10px] max-w-[70%] leading-[1.4]` }>
+      <div className={`${message.senderId === userInfo?.id ? "bg-outgoing-background text-white" : "bg-incoming-background text-white"} rounded-[14px] px-[14px] py-[10px] max-w-[75%] leading-[1.4]` }>
         <div className="relative">
           <img
             src={message.message}
-            className="rounded-lg max-w-full h-auto object-contain max-h-[50vh]"
+            className="rounded-lg max-w-full h-auto object-contain max-h-[80vh]"
             alt="Sent Image"
           />
           <div className="absolute bottom-1 right-1 flex items-end gap-1">

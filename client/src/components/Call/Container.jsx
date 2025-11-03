@@ -15,101 +15,124 @@ function Container({ data }) {
   const zgRef = useRef(null);
   const localStreamRef = useRef(null);
   const publishStreamIdRef = useRef(null);
-
-  // DOM refs เพื่อหลีกเลี่ยง querySelector หลายรอบ
   const remoteBoxRef = useRef(null);
   const localBoxRef = useRef(null);
+
+  const isCaller = data?.type === "out-going";
 
   // ---------- 1) รอการรับสาย ----------
   useEffect(() => {
     if (!data) return;
 
-    if (data.type === "out-going" && socket?.current) {
-      //  รออีกฝั่งกดรับสายก่อนถึงจะเปลี่ยน callAccepted = true
-      const onAccept = ({ roomId }) => {
-        console.log("📞 อีกฝั่งกดรับสายแล้ว roomId:", roomId);
+    if (isCaller && socket?.current) {
+      const onAccept = async ({ roomId }) => {
         setCallAccepted(true);
+
+        //  Sync stream อีกครั้งหลังฝั่งรับกด "Accept"
+        setTimeout(async () => {
+          try {
+            const zg = zgRef.current;
+            if (zg && roomId) {
+              const streams = await zg.getAllPlayStreamList(String(roomId));
+              for (const s of streams) {
+                const streamID = s.streamID;
+                if (!document.getElementById(streamID)) {
+                  const remoteEl = document.createElement(
+                    data.callType === "video" ? "video" : "audio"
+                  );
+                  remoteEl.id = streamID;
+                  remoteEl.autoplay = true;
+                  remoteEl.playsInline = true;
+                  remoteEl.muted = false;
+                  remoteBoxRef.current?.appendChild(remoteEl);
+                  const remoteStream = await zg.startPlayingStream(streamID);
+                  remoteEl.srcObject = remoteStream;
+                }
+              }
+            }
+          } catch {}
+        }, 1000);
       };
+
       socket.current.off("accept-call", onAccept);
       socket.current.on("accept-call", onAccept);
       return () => socket.current.off("accept-call", onAccept);
     }
 
-    //  ฝั่งผู้รับสาย (incoming) เท่านั้นที่ setCallAccepted(true) ทันที
-    if (data.type === "in-coming") {
+    // ฝั่งผู้รับสาย (in-coming)
+    if (!isCaller) {
       const timer = setTimeout(() => setCallAccepted(true), 200);
       return () => clearTimeout(timer);
     }
   }, [data, socket]);
 
-
-  // ---------- 2) ขอ ZEGO token หลังรับสาย ----------
+  // ---------- 2) ขอ ZEGO token ----------
   useEffect(() => {
     const fetchToken = async () => {
       if (!callAccepted || !userInfo?.id) return;
       try {
         const res = await axios.get(GET_CALL_TOKEN(userInfo.id), {
-          withCredentials: true, //  สำคัญถ้าใช้ cookie
+          withCredentials: true,
         });
         setToken(res.data?.token);
       } catch (err) {
-        console.error("❌ Error fetching ZEGO token:", err);
+        console.error("Error fetching ZEGO token:", err);
       }
     };
     fetchToken();
   }, [callAccepted, userInfo]);
 
-  // ---------- 3) เริ่ม call กับ ZEGO ----------
+  // ---------- 3) เริ่ม call ----------
   useEffect(() => {
     let isCancelled = false;
 
     const startCall = async () => {
-      try {
-        if (!token || !data?.roomId || !userInfo?.id) {
-          console.error("❌ Missing required info to start call:", {
-            hasToken: !!token,
-            roomId: data?.roomId,
-            userId: userInfo?.id,
-          });
-          return;
-        }
+      if (!token || !data?.roomId || !userInfo?.id) return;
 
-        // เคลียร์ DOM เดิม (กัน append ซ้ำ)
-        if (remoteBoxRef.current) remoteBoxRef.current.innerHTML = "";
-        if (localBoxRef.current) localBoxRef.current.innerHTML = "";
+      // เคลียร์ DOM เดิม
+      if (remoteBoxRef.current) remoteBoxRef.current.innerHTML = "";
+      if (localBoxRef.current) localBoxRef.current.innerHTML = "";
 
-        // สร้าง engine
-        const appID = parseInt(process.env.NEXT_PUBLIC_ZEGO_APP_ID, 10);
-        const zg = new ZegoExpressEngine(appID);
-        zgRef.current = zg;
+      const appID = parseInt(process.env.NEXT_PUBLIC_ZEGO_APP_ID, 10);
+      const zg = new ZegoExpressEngine(appID);
+      zgRef.current = zg;
 
-        // ฟัง remote stream
-        zg.on("roomStreamUpdate", async (roomID, updateType, streamList) => {
-          if (updateType === "ADD" && streamList.length > 0) {
+      //  ฟัง event การเพิ่ม/ลบ stream
+      zg.on("roomStreamUpdate", async (roomID, updateType, streamList) => {
+        if (updateType === "ADD" && streamList.length > 0) {
+          for (const s of streamList) {
+            const streamID = s.streamID;
+            if (document.getElementById(streamID)) continue;
+
             const remoteEl = document.createElement(
               data.callType === "video" ? "video" : "audio"
             );
-            remoteEl.id = streamList[0].streamID;
+            remoteEl.id = streamID;
             remoteEl.autoplay = true;
             remoteEl.playsInline = true;
             remoteEl.muted = false;
-            if (remoteBoxRef.current) remoteBoxRef.current.appendChild(remoteEl);
+            remoteBoxRef.current?.appendChild(remoteEl);
 
             try {
-              const remoteStream = await zg.startPlayingStream(streamList[0].streamID);
+              const remoteStream = await zg.startPlayingStream(streamID);
               remoteEl.srcObject = remoteStream;
-            } catch (e) {
-              console.error("❌ startPlayingStream failed:", e);
-            }
+            } catch {}
           }
+        }
 
-          if (updateType === "DELETE") {
-            // อีกฝั่งวางสาย
-            endCall();
+        if (updateType === "DELETE" && streamList.length > 0) {
+          for (const s of streamList) {
+            const streamID = s.streamID;
+            zg.stopPlayingStream(streamID);
+            const el = document.getElementById(streamID);
+            if (el) el.remove();
           }
-        });
+          endCall();
+        }
+      });
 
-        // login room
+      //  เข้าห้อง ZEGO
+      try {
         await zg.loginRoom(
           String(data.roomId),
           token,
@@ -119,16 +142,39 @@ function Container({ data }) {
           },
           { userUpdate: true }
         );
+      } catch {
+        return;
+      }
 
-        if (isCancelled) return;
+      //  Force sync stream list หลัง join (Edge-friendly)
+      setTimeout(async () => {
+        try {
+          const streams = await zg.getAllPlayStreamList(String(data.roomId));
+          for (const s of streams) {
+            const streamID = s.streamID;
+            if (!document.getElementById(streamID)) {
+              const remoteEl = document.createElement(
+                data.callType === "video" ? "video" : "audio"
+              );
+              remoteEl.id = streamID;
+              remoteEl.autoplay = true;
+              remoteEl.playsInline = true;
+              remoteEl.muted = false;
+              remoteBoxRef.current?.appendChild(remoteEl);
+              const remoteStream = await zg.startPlayingStream(streamID);
+              remoteEl.srcObject = remoteStream;
+            }
+          }
+        } catch {}
+      }, 900);
 
-        // สร้าง local stream (voice/video)
+      //  สร้าง local stream
+      try {
         const localStream = await zg.createStream({
           camera: { audio: true, video: data.callType === "video" },
         });
         localStreamRef.current = localStream;
 
-        // แสดง local preview
         const localEl = document.createElement(
           data.callType === "video" ? "video" : "audio"
         );
@@ -138,46 +184,35 @@ function Container({ data }) {
         localEl.muted = true;
         localEl.className = "h-28 w-32 rounded-md overflow-hidden";
         localEl.srcObject = localStream;
-        if (localBoxRef.current) localBoxRef.current.appendChild(localEl);
+        localBoxRef.current?.appendChild(localEl);
 
-        // publish
         const streamID = `stream_${userInfo.id}_${Date.now()}`;
         publishStreamIdRef.current = streamID;
         await zg.startPublishingStream(streamID, localStream);
-      } catch (err) {
-        console.error("❌ startCall error:", err);
-      }
+      } catch {}
     };
 
     if (token) startCall();
 
-    // cleanup เมื่อ component unmount หรือ token เปลี่ยน
+    // ---------- Cleanup ----------
     return () => {
       isCancelled = true;
       try {
         if (zgRef.current) {
-          // stop publish
           if (publishStreamIdRef.current) {
             zgRef.current.stopPublishingStream(publishStreamIdRef.current);
             publishStreamIdRef.current = null;
           }
-          // destroy local
           if (localStreamRef.current) {
+            localStreamRef.current.getTracks().forEach((t) => t.stop());
             zgRef.current.destroyStream(localStreamRef.current);
             localStreamRef.current = null;
           }
-          // logout
-          if (data?.roomId) {
-            zgRef.current.logoutRoom(String(data.roomId));
-          }
-          // destroy engine
+          if (data?.roomId) zgRef.current.logoutRoom(String(data.roomId));
           zgRef.current.destroyEngine();
           zgRef.current = null;
         }
-      } catch (e) {
-        console.warn("cleanup error:", e);
-      }
-
+      } catch {}
       if (remoteBoxRef.current) remoteBoxRef.current.innerHTML = "";
       if (localBoxRef.current) localBoxRef.current.innerHTML = "";
     };
@@ -186,18 +221,14 @@ function Container({ data }) {
   // ---------- 4) จบสาย ----------
   const endCall = () => {
     try {
-      // แจ้งอีกฝั่งด้วย event มาตรฐานเดียวกัน
       if (socket?.current?.emit) {
         socket.current.emit("reject-call", {
-          from: data.id, // id ของ "อีกฝั่ง" เพื่อให้ server ยิงกลับหาคนโทร
+          from: data.id,
           roomId: data.roomId,
         });
       }
-    } catch (e) {
-      console.warn("emit reject-call failed:", e);
-    }
+    } catch {}
 
-    // cleanup ZEGO
     try {
       if (zgRef.current) {
         if (publishStreamIdRef.current) {
@@ -205,18 +236,15 @@ function Container({ data }) {
           publishStreamIdRef.current = null;
         }
         if (localStreamRef.current) {
+          localStreamRef.current.getTracks().forEach((t) => t.stop());
           zgRef.current.destroyStream(localStreamRef.current);
           localStreamRef.current = null;
         }
-        if (data?.roomId) {
-          zgRef.current.logoutRoom(String(data.roomId));
-        }
+        if (data?.roomId) zgRef.current.logoutRoom(String(data.roomId));
         zgRef.current.destroyEngine();
         zgRef.current = null;
       }
-    } catch (e) {
-      console.warn("ZEGO cleanup error:", e);
-    }
+    } catch {}
 
     if (remoteBoxRef.current) remoteBoxRef.current.innerHTML = "";
     if (localBoxRef.current) localBoxRef.current.innerHTML = "";
@@ -229,18 +257,18 @@ function Container({ data }) {
   return (
     <div className="border-conversation-border border-l w-full bg-conversation-panel-background flex flex-col h-[100vh] overflow-hidden items-center justify-center text-white">
       <div className="flex flex-col gap-3 items-center">
-        <span className="text-5xl">{`${data.firstName ?? ""} ${data.lastName ?? ""}`.trim()}</span>
+        <span className="text-5xl">
+          {`${data.firstName ?? ""} ${data.lastName ?? ""}`.trim()}
+        </span>
         <span className="text-lg">
           {callAccepted
             ? "กำลังโทรอยู่"
             : data.callType === "video"
-              ? "กำลังรอสาย (วิดีโอ)"
-              : "กำลังรอสาย"}
+            ? "กำลังรอสาย (วิดีโอ)"
+            : "กำลังรอสาย"}
         </span>
-
       </div>
 
-      {/* แสดง avatar ระหว่างรอสาย หรือกรณี voice call */}
       {(!callAccepted || isVoice) && (
         <div className="my-24">
           <Image
@@ -253,13 +281,15 @@ function Container({ data }) {
         </div>
       )}
 
-      {/* กล่อง remote + local */}
       <div className="my-5 relative">
         <div ref={remoteBoxRef} id="remote-media-box" />
-        <div className="absolute bottom-5 right-5" ref={localBoxRef} id="local-media-box" />
+        <div
+          className="absolute bottom-5 right-5"
+          ref={localBoxRef}
+          id="local-media-box"
+        />
       </div>
 
-      {/* ปุ่มวางสาย */}
       <div className="h-16 w-16 bg-red-600 flex items-center justify-center rounded-full">
         <MdOutlineCallEnd className="text-3xl cursor-pointer" onClick={endCall} />
       </div>

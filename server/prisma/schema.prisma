@@ -13,6 +13,7 @@ enum MessageType {
   audio
   video
   file
+  note
 }
 
 enum MessageStatus {
@@ -48,8 +49,6 @@ model Message {
   senderId      Int
   receiver      User?         @relation("receivedMessages", fields: [receiverId], references: [id])
   receiverId    Int?
-
-  // cascade ลบข้อความในกลุ่มเมื่อกลุ่มถูกลบ
   group         Group?        @relation(fields: [groupId], references: [id], onDelete: Cascade)
   groupId       Int?
 

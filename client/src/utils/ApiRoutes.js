@@ -55,6 +55,9 @@ export const ADD_GROUP_MESSAGE_ROUTE = `${MESSAGE_ROUTE}/add-group-message`;
 // 🧩 GROUP ROUTES
 export const ADD_GROUP_ROUTE = `/api/groups/create`;
 
+// ลบกลุ่ม
+export const DELETE_GROUP_ROUTE = (groupId) => `/api/groups/${groupId}/delete`;
+
 // 👑 ADMIN ROLE ROUTES (optional)
 const USER_ROUTE = `/api/users`;
 export const CHANGE_USER_ROLE_ROUTE = (userId) => `${USER_ROUTE}/role/${userId}`;
@@ -62,9 +65,22 @@ export const CHANGE_USER_ROLE_ROUTE = (userId) => `${USER_ROUTE}/role/${userId}`
 // Admin create user (server admin routes)
 export const ADMIN_CREATE_USER_ROUTE = `/api/admin/users`;
 export const ADMIN_USERS_ROUTE = `/api/admin/users`;
+// Admin/Manager get public users for group creation
+export const ADMIN_USERS_PUBLIC_ROUTE = `/api/admin/users/public`;
 
 // Auth extras: change password and update profile pic
 export const CHANGE_PASSWORD_ROUTE = `${AUTH_ROUTE}/change-password`;
 export const UPDATE_PROFILE_PIC_ROUTE = `${AUTH_ROUTE}/profile-photo`;
+
 // Update profile fields (PATCH)
 export const UPDATE_USER_PROFILE_ROUTE = `${AUTH_ROUTE}/profile`;
+
+// ดึงโน้ตล่าสุดของกลุ่ม
+export const GET_LATEST_GROUP_NOTE_ROUTE = (groupId) =>
+  `${HOST}/api/groups/${groupId}/latest-note`;
+
+// ลบโน้ตของกลุ่ม
+export const DELETE_GROUP_NOTE_ROUTE = (groupId, noteId) =>
+  `${HOST}/api/messages/groups/${groupId}/notes/${noteId}`;
+
+
