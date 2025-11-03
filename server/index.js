@@ -12,6 +12,7 @@ import MessageRoutes from "./routes/MessageRoutes.js";
 import FileRoutes from "./routes/FileRoutes.js";
 import GroupRoutes from "./routes/GroupRoutes.js";
 import AdminRoutes from "./routes/AdminRoutes.js";
+import GroupCallRoutes from "./routes/GroupCallRoutes.js";
 
 import { Server } from "socket.io";
 import prisma from "./utils/PrismaClient.js";
@@ -36,7 +37,7 @@ app.use(
     resave: false,
     saveUninitialized: false,
     cookie: {
-      secure: false, //  true ถ้าใช้ https
+      secure: false, // true ถ้าใช้ https
       httpOnly: true,
       sameSite: "lax",
       maxAge: 1000 * 60 * 60 * 24, // 1 วัน
@@ -50,13 +51,13 @@ app.use("/uploads/audios/", express.static("uploads/audios"));
 app.use("/uploads/files/", express.static("uploads/files"));
 app.use("/uploads/group-files/", express.static("uploads/group-files"));
 
-
 // 🔹 Routes
 app.use("/api/auth", AuthRoutes);
 app.use("/api/messages", MessageRoutes);
 app.use("/api/files", FileRoutes);
 app.use("/api/groups", GroupRoutes);
 app.use("/api/admin", AdminRoutes);
+app.use("/api/group-call", GroupCallRoutes);
 
 // 🚀 Start Server
 const PORT = process.env.PORT || 3005;
@@ -71,7 +72,6 @@ const io = new Server(server, {
 
 app.set("io", io);
 global.io = io;
-
 global.onlineUsers = new Map();
 
 io.on("connection", (socket) => {
@@ -124,7 +124,7 @@ io.on("connection", (socket) => {
 
     const message = { ...baseMessage, sender: senderObj };
 
-    //  ถ้ามี socket ของผู้รับ — ส่งให้ผู้รับ
+    // ถ้ามี socket ของผู้รับ — ส่งให้ผู้รับ
     if (sendUserSocket) {
       socket.to(sendUserSocket).emit("msg-receive", { message });
     }
@@ -133,7 +133,6 @@ io.on("connection", (socket) => {
   });
 
   // 📢 ส่วนของ Group Chat
-  // 🧩 
   socket.on("leave-all-groups", () => {
     const rooms = Array.from(socket.rooms);
     rooms.forEach((room) => {
@@ -146,7 +145,6 @@ io.on("connection", (socket) => {
     socket.join(`group_${groupId}`);
     console.log(`👥 ผู้ใช้ ${socket.id} เข้าห้อง group_${groupId}`);
   });
-
 
   // 📨 ส่งข้อความในกลุ่ม (เรียลไทม์ทั้งผู้ส่งและผู้รับ)
   socket.on("group-message-send", async (data) => {
@@ -163,7 +161,6 @@ io.on("connection", (socket) => {
       messageStatus: "delivered",
     };
 
-    // Try to fetch sender details to include in the real-time payload so recipients can render profile immediately
     let senderObj = null;
     try {
       const user = await prisma.user.findUnique({
@@ -176,57 +173,46 @@ io.on("connection", (socket) => {
     }
 
     const msgData = { message: { ...baseMessage, sender: senderObj } };
-
-    // ส่งให้สมาชิกในห้อง (ยกเว้นคนส่ง)
     socket.to(`group_${groupId}`).emit("group-message-receive", msgData);
-
-    // ส่งกลับให้คนส่งด้วย (เพื่อให้ขึ้นทันที)
     socket.emit("group-message-receive", msgData);
   });
 
   // 📝 เพิ่มประกาศโน้ตของแอดมิน (Realtime)
-socket.on("group-note-send", async (data) => {
-  const { groupId, from, message } = data;
-  console.log(`📝 [Realtime] โน้ตใหม่จาก admin (${from}) ใน group_${groupId}`);
+  socket.on("group-note-send", async (data) => {
+    const { groupId, from, message } = data;
+    console.log(`📝 [Realtime] โน้ตใหม่จาก admin (${from}) ใน group_${groupId}`);
 
-  const baseNote = {
-    id: Date.now(),
-    senderId: from,
-    groupId,
-    message,
-    createdAt: new Date().toISOString(),
-  };
+    const baseNote = {
+      id: Date.now(),
+      senderId: from,
+      groupId,
+      message,
+      createdAt: new Date().toISOString(),
+    };
 
-  // ดึงข้อมูล sender เพื่อแสดงชื่อใน client
-  let senderObj = null;
-  try {
-    const user = await prisma.user.findUnique({
-      where: { id: parseInt(from) },
-      select: { id: true, firstName: true, lastName: true, profilePicture: true },
-    });
-    if (user) senderObj = user;
-  } catch (err) {
-    console.warn("ไม่สามารถดึงข้อมูล sender ได้:", err);
-  }
+    let senderObj = null;
+    try {
+      const user = await prisma.user.findUnique({
+        where: { id: parseInt(from) },
+        select: { id: true, firstName: true, lastName: true, profilePicture: true },
+      });
+      if (user) senderObj = user;
+    } catch (err) {
+      console.warn("ไม่สามารถดึงข้อมูล sender ได้:", err);
+    }
 
-  const notePayload = { note: { ...baseNote, sender: senderObj } };
+    const notePayload = { note: { ...baseNote, sender: senderObj } };
+    socket.to(`group_${groupId}`).emit("group-note-receive", notePayload);
+    socket.emit("group-note-receive", notePayload);
+  });
 
-  // ส่งให้สมาชิกกลุ่มทุกคน (ยกเว้นผู้ส่ง)
-  socket.to(`group_${groupId}`).emit("group-note-receive", notePayload);
-
-  // ส่งกลับให้ผู้ส่งด้วย (เพื่ออัปเดตตนเอง)
-  socket.emit("group-note-receive", notePayload);
-});
-
-// 🗑️ เมื่อโน้ตถูกลบ
-socket.on("group-note-delete", ({ groupId, noteId }) => {
-  socket.to(`group_${groupId}`).emit("group-note-deleted", { noteId });
-  socket.emit("group-note-deleted", { noteId });
-});
+  // 🗑️ เมื่อโน้ตถูกลบ
+  socket.on("group-note-delete", ({ groupId, noteId }) => {
+    socket.to(`group_${groupId}`).emit("group-note-deleted", { noteId });
+    socket.emit("group-note-deleted", { noteId });
+  });
 
   // 🔊 Voice & Video Calls
-  // -----------------------------------------------
-
   socket.on("outgoing-voice-call", (data) => {
     const sendUserSocket = onlineUsers.get(data.to);
     console.log("📞 Caller:", data.from.id, "→ Receiver:", data.to);
@@ -244,7 +230,6 @@ socket.on("group-note-delete", ({ groupId, noteId }) => {
     }
   });
 
-  // 📹 Video Call
   socket.on("outgoing-video-call", (data) => {
     const sendUserSocket = onlineUsers.get(data.to);
     if (sendUserSocket) {
@@ -260,7 +245,6 @@ socket.on("group-note-delete", ({ groupId, noteId }) => {
     }
   });
 
-  // ❌ ปฏิเสธการโทร (ใช้ชื่อ unified: reject-call)
   socket.on("reject-call", (data) => {
     const sendUserSocket = onlineUsers.get(data.from);
     if (sendUserSocket) {
@@ -269,17 +253,52 @@ socket.on("group-note-delete", ({ groupId, noteId }) => {
     }
   });
 
-  //  รับสายเรียกเข้า (พร้อมส่ง roomId กลับไปยัง caller)
   socket.on("accept-incoming-call", ({ id, roomId }) => {
     const sendUserSocket = onlineUsers.get(id);
     console.log("📩 [Server] รับ event accept-incoming-call จาก:", socket.id);
     console.log("↩️ ส่งต่อ event accept-call ไปหา caller:", id, "roomId:", roomId);
-
     if (sendUserSocket) {
       socket.to(sendUserSocket).emit("accept-call", { roomId });
       console.log("📲 ผู้รับสายตอบรับ call:", id, "roomId:", roomId);
     } else {
       console.log("⚠️ [Server] ไม่พบ socket ของ caller:", id);
     }
+  });
+
+  // 🔊 โทรออกแบบกลุ่ม (แก้ groupName)
+  socket.on("outgoing-group-call", async ({ groupId, from, roomId, callType, groupName }) => {
+    try {
+      const members = await prisma.groupMember.findMany({
+        where: { groupId: parseInt(groupId) },
+        select: { userId: true },
+      });
+
+      members.forEach((m) => {
+        const socketId = onlineUsers.get(m.userId);
+        if (socketId && m.userId !== from.id) {
+          io.to(socketId).emit("incoming-group-call", {
+            groupId,
+            from,
+            groupName, // ✅ ป้องกัน undefined
+            callType,
+            roomId,
+          });
+        }
+      });
+
+      console.log(`📞 Group call started in group_${groupId} by user ${from.id}`);
+    } catch (err) {
+      console.error("❌ Error in group call:", err);
+    }
+  });
+
+  socket.on("join-group-call", ({ groupId, user }) => {
+    socket.join(`groupcall_${groupId}`);
+    io.to(`groupcall_${groupId}`).emit("group-call-joined", { user });
+  });
+
+  socket.on("leave-group-call", ({ groupId, userId }) => {
+    socket.leave(`groupcall_${groupId}`);
+    io.to(`groupcall_${groupId}`).emit("group-call-left", { userId });
   });
 });

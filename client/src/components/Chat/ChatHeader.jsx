@@ -9,16 +9,10 @@ import { reducerCases } from "@/context/constants";
 import ContextMenu from "../common/ContextMenu";
 
 function ChatHeader() {
-  const [{ currentChatUser, currentGroup, onlineUsers, userInfo }, dispatch] = useStateProvider();
+  const [{ currentChatUser, currentGroup, onlineUsers, userInfo, socket }, dispatch] =
+    useStateProvider();
   const [contextMenuCoordinates, setContextMenuCoordinates] = useState({ x: 0, y: 0 });
   const [isContextMenuVisible, setIsContextMenuVisible] = useState(false);
-
-  // Debug: log current user role to help trace visibility issues
-  try {
-    // avoid noisy logs in production but helpful during local dev
-    // eslint-disable-next-line no-console
-    console.debug("[ChatHeader] current user role:", userInfo?.role);
-  } catch (e) {}
 
   // ---------- เปิดเมนูคลิกขวา ----------
   const showContextMenu = (e) => {
@@ -33,14 +27,12 @@ function ChatHeader() {
       name: "Exit",
       callBack: () => {
         setIsContextMenuVisible(false);
-        // ใช้ action ที่รวมทุกอย่างไว้แล้ว
         dispatch({ type: reducerCases.SET_EXIT_CHAT });
-        console.log(" ออกจากห้องแชทและกลับไปหน้า ChatList แล้ว");
       },
     },
   ];
 
-  // ---------- 📞 โทรออก ----------
+  // ---------- 📞 โทรออก (1-1) ----------
   const handleVoiceCall = () => {
     if (!currentChatUser?.id || currentGroup) return;
     dispatch({
@@ -57,7 +49,7 @@ function ChatHeader() {
     });
   };
 
-  // ---------- 🎥 วิดีโอคอล ----------
+  // ---------- 🎥 วิดีโอคอล (1-1) ----------
   const handleVideoCall = () => {
     if (!currentChatUser?.id || currentGroup) return;
     dispatch({
@@ -70,6 +62,35 @@ function ChatHeader() {
         type: "out-going",
         callType: "video",
         roomId: Date.now(),
+      },
+    });
+  };
+
+  // ---------- 📞 โทรกลุ่ม ----------
+  const handleGroupCall = (callType) => {
+    if (!currentGroup || !socket?.current) return;
+
+    const roomId = `group_${currentGroup.id}_${Date.now()}`;
+
+    // 🔊 ส่ง event ไป server
+    socket.current.emit("outgoing-group-call", {
+      groupId: currentGroup.id,
+      groupName: currentGroup.name,
+      from: userInfo,
+      callType,
+      roomId,
+    });
+
+    // 🧠 ตั้งค่า state ฝั่ง client เพื่อเปิด GroupCallContainer
+    dispatch({
+      type: reducerCases.SET_GROUP_CALL,
+      groupCall: {
+        groupId: currentGroup.id,
+        groupName: currentGroup.name,
+        from: userInfo,
+        callType,
+        roomId,
+        type: "out-going",
       },
     });
   };
@@ -106,8 +127,9 @@ function ChatHeader() {
             <span className="text-primary-strong font-medium">
               {currentGroup
                 ? currentGroup.name
-                : `${currentChatUser?.firstName || currentChatUser?.name || ""} ${currentChatUser?.lastName || ""
-                }`}
+                : `${currentChatUser?.firstName || currentChatUser?.name || ""} ${
+                    currentChatUser?.lastName || ""
+                  }`}
             </span>
 
             {!currentGroup && role && (
@@ -135,17 +157,11 @@ function ChatHeader() {
 
       {/* ---------- ด้านขวา ---------- */}
       <div className="flex gap-6">
+        {/* 📂 ฝากไฟล์ (เฉพาะแอดมิน/เมเนเจอร์) */}
         {currentGroup && (userInfo?.role === "admin" || userInfo?.role === "manager") && (
           <button
             onClick={() => {
-              try {
-                // eslint-disable-next-line no-console
-                console.debug("[ChatHeader] open group files for group:", currentGroup?.id);
-              } catch (e) {}
-              dispatch({
-                type: reducerCases.SHOW_GROUP_FILES,
-                payload: currentGroup,
-              });
+              dispatch({ type: reducerCases.SHOW_GROUP_FILES, payload: currentGroup });
             }}
             className="bg-icon-green hover:bg-blue-600 text-white px-3 py-1 rounded-md text-sm"
           >
@@ -153,6 +169,23 @@ function ChatHeader() {
           </button>
         )}
 
+        {/* 🔊 โทรกลุ่ม */}
+        {currentGroup && (
+          <>
+            <MdCall
+              className="text-blue-500 hover:text-blue-400 cursor-pointer text-xl"
+              title="โทรเสียงกลุ่ม"
+              onClick={() => handleGroupCall("voice")}
+            />
+            <IoVideocam
+              className="text-blue-500 hover:text-blue-400 cursor-pointer text-xl"
+              title="วิดีโอคอลกลุ่ม"
+              onClick={() => handleGroupCall("video")}
+            />
+          </>
+        )}
+
+        {/* 📞 โทร 1-1 */}
         {!currentGroup && (
           <>
             <MdCall
@@ -168,6 +201,7 @@ function ChatHeader() {
           </>
         )}
 
+        {/* 🔍 ค้นหา / เมนู */}
         <BiSearchAlt2
           className="text-panel-header-icon cursor-pointer text-xl"
           onClick={() => dispatch({ type: reducerCases.SET_MESSAGE_SEARCH })}

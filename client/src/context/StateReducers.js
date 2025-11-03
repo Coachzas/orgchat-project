@@ -20,6 +20,8 @@ export const initialState = {
   voiceCall: null,
   incomingVoiceCall: null,
   incomingVideoCall: null,
+  groupCall: null,
+  incomingGroupCall: null,
 };
 
 const reducer = (state, action) => {
@@ -105,6 +107,13 @@ const reducer = (state, action) => {
         incomingVideoCall: null,
         incomingVoiceCall: null,
       };
+
+    case reducerCases.SET_GROUP_CALL:
+      return { ...state, groupCall: action.groupCall };
+    case reducerCases.SET_INCOMING_GROUP_CALL:
+      return { ...state, incomingGroupCall: action.incomingGroupCall };
+    case reducerCases.END_GROUP_CALL:
+      return { ...state, groupCall: null, incomingGroupCall: null };
 
     case reducerCases.SET_EXIT_CHAT:
       console.log("🚪 ออกจากห้องแชทและกลับไปหน้า ChatList");
