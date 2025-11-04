@@ -1,5 +1,6 @@
 import express from "express";
 import { isAuthenticated, isAdmin } from "../middlewares/AuthMiddleware.js";
+import { deleteUserByAdmin } from "../controllers/AdminController.js";
 import {
   getAllUsers,
   updateUserRole,
@@ -28,5 +29,8 @@ router.post("/groups", isAuthenticated, isAdmin, createGroupByAdmin);
 
 // ดึงผู้ใช้ตอน admin/manager สร้างกลุ่ม
 router.get("/users/public", isAuthenticated, getAllUsersPublic);
+
+//  ลบผู้ใช้โดย admin
+router.delete("/users/:id", isAuthenticated, isAdmin, deleteUserByAdmin);
 
 export default router;

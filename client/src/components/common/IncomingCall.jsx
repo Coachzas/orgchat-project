@@ -14,13 +14,13 @@ function IncomingCall() {
 
     console.log(" [Receiver] รับสายจาก:", incomingVoiceCall.id);
 
-    // 🔹 แจ้ง server ว่าผู้รับกดรับสาย
+    //  แจ้ง server ว่าผู้รับกดรับสาย
     socket.current.emit("accept-incoming-call", {
       id: incomingVoiceCall.id,     // id ของผู้โทร (caller)
       roomId: incomingVoiceCall.roomId, // ต้องใช้ร่วมกันใน ZEGO
     });
 
-    // 🔹 ตั้งค่าผู้ใช้ใน state ว่ากำลังรับสาย
+    //  ตั้งค่าผู้ใช้ใน state ว่ากำลังรับสาย
     dispatch({
       type: reducerCases.SET_VOICE_CALL,
       voiceCall: {
@@ -30,7 +30,7 @@ function IncomingCall() {
       },
     });
 
-    // 🔹 ล้าง popup หลังรับสาย
+    //  ล้าง popup หลังรับสาย
     dispatch({
       type: reducerCases.SET_INCOMING_VOICE_CALL,
       incomingVoiceCall: null,

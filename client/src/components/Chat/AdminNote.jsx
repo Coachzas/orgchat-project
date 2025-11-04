@@ -15,7 +15,7 @@ export default function AdminNote({ groupId, onClose }) {
   const [newNote, setNewNote] = useState("");
   const [sending, setSending] = useState(false);
 
-  // 🔹 โหลดโน้ตทั้งหมดของกลุ่ม
+  //  โหลดโน้ตทั้งหมดของกลุ่ม
   const fetchNotes = async () => {
     setLoading(true);
     try {
@@ -30,12 +30,12 @@ export default function AdminNote({ groupId, onClose }) {
     }
   };
 
-  // 🔹 เรียกเมื่อเปิดกลุ่ม
+  //  เรียกเมื่อเปิดกลุ่ม
   useEffect(() => {
     if (groupId) fetchNotes();
   }, [groupId]);
 
-  // 🔹 เรียลไทม์: เมื่อมีโน้ตใหม่หรือโดนลบ
+  //  เรียลไทม์: เมื่อมีโน้ตใหม่หรือโดนลบ
   useEffect(() => {
     if (!socket?.current) return;
 
@@ -56,7 +56,7 @@ export default function AdminNote({ groupId, onClose }) {
     };
   }, [socket]);
 
-  // 🔹 โพสต์โน้ตใหม่
+  //  โพสต์โน้ตใหม่
   const handleSend = async () => {
     if (!newNote.trim()) return;
     setSending(true);
@@ -76,7 +76,7 @@ export default function AdminNote({ groupId, onClose }) {
     }
   };
 
-  // 🔹 ลบโน้ต
+  //  ลบโน้ต
   const handleDelete = async (noteId) => {
     if (!window.confirm("คุณแน่ใจหรือไม่ว่าต้องการลบโน้ตนี้?")) return;
     try {
@@ -90,7 +90,7 @@ export default function AdminNote({ groupId, onClose }) {
     }
   };
 
-  // 🔹 Portal Modal
+  //  Portal Modal
   return ReactDOM.createPortal(
     <div
       className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/70 backdrop-blur-sm animate-fadeIn"

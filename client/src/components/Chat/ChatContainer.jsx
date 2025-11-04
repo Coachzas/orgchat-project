@@ -255,7 +255,7 @@ function ChatContainer() {
                         className={`flex items-start gap-1 ${isOwn ? "flex-row-reverse" : "flex-row"
                           }`}
                       >
-                        {message.groupId && sender && (
+                        {message.groupId && sender && message.type !== "note" && (
                           <div className="flex flex-col items-center text-xs w-[3.5rem]">
                             <Avatar
                               type="sm"

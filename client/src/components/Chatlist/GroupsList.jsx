@@ -6,7 +6,7 @@ import GroupModal from "./GroupModal";
 import axios from "axios";
 import {
   GET_GROUP_MESSAGES_ROUTE,
-  DELETE_GROUP_ROUTE, // ✅ เพิ่ม import
+  DELETE_GROUP_ROUTE, 
 } from "@/utils/ApiRoutes";
 
 function GroupsList() {
@@ -16,13 +16,13 @@ function GroupsList() {
   const [showModal, setShowModal] = useState(false);
   const [{ userInfo, socket }, dispatch] = useStateProvider();
 
-  // ✅ โหลดรายการกลุ่มทั้งหมด
+  //  โหลดรายการกลุ่มทั้งหมด
   const fetchGroups = async () => {
     try {
       const res = await axios.get(`/api/groups`, { withCredentials: true });
       const all = res.data || [];
 
-      // ✅ กรองเฉพาะกลุ่มที่ user เป็นสมาชิก
+      //  กรองเฉพาะกลุ่มที่ user เป็นสมาชิก
       if (!userInfo?.id) {
         setGroups(all);
         setFilteredGroups(all);
@@ -47,7 +47,7 @@ function GroupsList() {
     fetchGroups();
   }, [userInfo]);
 
-  // ✅ ฟิลเตอร์กลุ่มตามคำค้น
+  //  ฟิลเตอร์กลุ่มตามคำค้น
   useEffect(() => {
     if (searchTerm.length) {
       const filtered = groups.filter((group) =>
@@ -59,12 +59,12 @@ function GroupsList() {
     }
   }, [searchTerm, groups]);
 
-  // ✅ กลับไปหน้า ChatList
+  //  กลับไปหน้า ChatList
   const handleBack = () => {
     dispatch({ type: reducerCases.SET_GROUPS_PAGE, payload: false });
   };
 
-  // ✅ เมื่อเลือกกลุ่ม
+  //  เมื่อเลือกกลุ่ม
   const handleSelectGroup = async (group) => {
     console.log("🔥 คลิกเข้ากลุ่ม:", group.name, "(ID:", group.id, ")");
     try {
@@ -83,14 +83,14 @@ function GroupsList() {
 
       if (socket?.current) {
         socket.current.emit("join-group", group.id);
-        console.log(`✅ เข้าห้อง group_${group.id} สำเร็จ`);
+        console.log(` เข้าห้อง group_${group.id} สำเร็จ`);
       }
     } catch (err) {
       console.error("❌ โหลดข้อความกลุ่มไม่สำเร็จ:", err);
     }
   };
 
-  // ✅ ฟังก์ชันลบกลุ่ม (เฉพาะ admin / manager)
+  //  ฟังก์ชันลบกลุ่ม (เฉพาะ admin / manager)
   const handleDeleteGroup = async (groupId, groupName) => {
     if (!["admin", "manager"].includes(userInfo?.role)) return;
     if (!confirm(`คุณแน่ใจหรือไม่ว่าต้องการลบกลุ่ม "${groupName}" ?`)) return;
@@ -142,7 +142,7 @@ function GroupsList() {
               key={group.id}
               className="flex justify-between items-center py-2 px-4 hover:bg-background-default-hover rounded cursor-pointer"
             >
-              {/* ✅ ชื่อกลุ่ม (คลิกเพื่อเข้าห้องแชท) */}
+              {/*  ชื่อกลุ่ม (คลิกเพื่อเข้าห้องแชท) */}
               <div onClick={() => handleSelectGroup(group)}>
                 <p className="font-medium">{group.name}</p>
                 <p className="text-secondary text-xs">
@@ -150,7 +150,7 @@ function GroupsList() {
                 </p>
               </div>
 
-              {/* ✅ ปุ่มลบกลุ่ม (เฉพาะ admin / manager) */}
+              {/*  ปุ่มลบกลุ่ม (เฉพาะ admin / manager) */}
               {(userInfo?.role === "admin" || userInfo?.role === "manager") && (
                 <button
                   onClick={() => handleDeleteGroup(group.id, group.name)}
@@ -162,7 +162,7 @@ function GroupsList() {
             </div>
           ))}
 
-          {/* ✅ ปุ่มสร้างกลุ่ม */}
+          {/*  ปุ่มสร้างกลุ่ม */}
           <div className="mt-6">
             {(userInfo?.role === "admin" || userInfo?.role === "manager") ? (
               <button

@@ -16,7 +16,7 @@ function GroupCallContainer({ data }) {
   const remoteBoxRef = useRef(null);
   const localBoxRef = useRef(null);
 
-  // ✅ ขอ ZEGO token
+  //  ขอ ZEGO token
   useEffect(() => {
     const fetchToken = async () => {
       if (!userInfo?.id) return;
@@ -30,7 +30,7 @@ function GroupCallContainer({ data }) {
     fetchToken();
   }, [userInfo]);
 
-  // ✅ เริ่มโทรกลุ่ม
+  //  เริ่มโทรกลุ่ม
   useEffect(() => {
     if (!token || !data?.roomId || !userInfo) return;
 
@@ -102,7 +102,7 @@ function GroupCallContainer({ data }) {
       }
     });
 
-    // ✅ cleanup ทั้ง ZEGO + DOM
+    //  cleanup ทั้ง ZEGO + DOM
     return () => {
       try {
         if (zgRef.current) {
@@ -121,13 +121,13 @@ function GroupCallContainer({ data }) {
         }
       } catch {}
 
-      // ✅ ล้าง DOM ที่ค้าง
+      //  ล้าง DOM ที่ค้าง
       if (remoteBoxRef.current) remoteBoxRef.current.innerHTML = "";
       if (localBoxRef.current) localBoxRef.current.innerHTML = "";
     };
   }, [token, data?.roomId, data?.callType, userInfo]);
 
-  // ✅ ออกจากสาย
+  //  ออกจากสาย
   const endGroupCall = () => {
     try {
       if (socket?.current?.emit) {

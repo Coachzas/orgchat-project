@@ -237,3 +237,33 @@ export const createUserByAdmin = async (req, res) => {
     return res.status(500).json({ error: "สร้างผู้ใช้ไม่สำเร็จ" });
   }
 };
+
+/**
+ * ❌ ลบผู้ใช้โดย Admin
+ */
+export const deleteUserByAdmin = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const user = await prisma.user.findUnique({
+      where: { id: parseInt(id) },
+    });
+
+    if (!user) {
+      return res.status(404).json({ error: "ไม่พบผู้ใช้ที่ต้องการลบ" });
+    }
+
+    await prisma.user.delete({ where: { id: parseInt(id) } });
+
+    const io = req.app.get("io");
+    if (io) {
+      io.emit("announcement", { message: `ผู้ใช้ ${user.firstName} ถูกลบออกจากระบบ` });
+      console.log(`🗑️ [AdminController] ลบผู้ใช้ ${user.email} สำเร็จ`);
+    }
+
+    return res.status(200).json({ message: "ลบผู้ใช้สำเร็จ" });
+  } catch (error) {
+    console.error("❌ [AdminController] deleteUserByAdmin:", error);
+    res.status(500).json({ error: "ไม่สามารถลบผู้ใช้ได้" });
+  }
+};

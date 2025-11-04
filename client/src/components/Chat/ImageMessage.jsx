@@ -12,7 +12,7 @@ function ImageMessage({ message }) {
         <div className="relative">
           <img
             src={message.message}
-            className="rounded-lg max-w-full h-auto object-contain max-h-[80vh]"
+            className="rounded-lg w-full h-auto object-contain max-h-[80vh]"
             alt="Sent Image"
           />
           <div className="absolute bottom-1 right-1 flex items-end gap-1">

@@ -101,7 +101,7 @@ function ChatListItem({ data, isContactsPage = false }) {
     );
   };
 
-  // 🔹 ตกแต่ง role badge
+  //  ตกแต่ง role badge
   const role = data?.role?.toLowerCase();
   const roleTitle = role ? role.charAt(0).toUpperCase() + role.slice(1) : "";
   const roleStyles = {

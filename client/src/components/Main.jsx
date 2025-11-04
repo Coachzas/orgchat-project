@@ -40,7 +40,7 @@ function Main() {
   const socket = useRef(null);
   const [checkingAuth, setCheckingAuth] = useState(true);
 
-  // ✅ ตรวจสอบ session
+  //  ตรวจสอบ session
   useEffect(() => {
     const checkSession = async () => {
       try {
@@ -59,12 +59,12 @@ function Main() {
     checkSession();
   }, []);
 
-  // ✅ ถ้าไม่มี session → กลับ login
+  //  ถ้าไม่มี session → กลับ login
   useEffect(() => {
     if (!userInfo && !checkingAuth) router.push("/login");
   }, [userInfo, router, checkingAuth]);
 
-  // ✅ เชื่อม socket.io
+  //  เชื่อม socket.io
   useEffect(() => {
     if (userInfo && !socket.current) {
       socket.current = io(SOCKET_HOST, { withCredentials: true });
@@ -98,7 +98,7 @@ function Main() {
     }
   }, [userInfo, dispatch]);
 
-  // ✅ โหลดข้อความ 1v1
+  // โหลดข้อความ 1v1
   useEffect(() => {
     const getMessages = async () => {
       if (!userInfo?.id || !currentChatUser?.id) return;
@@ -115,7 +115,7 @@ function Main() {
     if (currentChatUser?.id) getMessages();
   }, [currentChatUser, userInfo, dispatch]);
 
-  // ✅ ฟัง event โทรเข้า
+  //  ฟัง event โทรเข้า
   useEffect(() => {
     if (!socket.current) return;
 
@@ -176,7 +176,7 @@ function Main() {
     };
   }, [socket, dispatch]);
 
-  // ✅ แสดง UI
+  //  แสดง UI
   return (
     <>
       {/* Popup โทรเข้า */}
@@ -194,7 +194,7 @@ function Main() {
           <GroupCallContainer data={groupCall} />
         </div>
       ) : (
-        // 🔹 หน้าหลัก
+        //  หน้าหลัก
         <div className="grid grid-cols-main h-screen w-screen overflow-hidden">
           <ChatList />
           <div className="flex justify-center items-center w-full">
