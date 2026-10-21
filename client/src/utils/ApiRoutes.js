@@ -1,9 +1,8 @@
-// Use relative routes so the Next dev server can proxy them to the backend.
-// This keeps requests same-origin (http://localhost:3000) and ensures cookies
-// are sent in development when using the rewrite/proxy in next.config.js.
-// Backend host (used for socket connection). Use env var in production if available.
-export const HOST = process.env.NEXT_PUBLIC_API_HOST || "http://localhost:3005";
-export const SOCKET_HOST = HOST;
+
+// ✅ ใช้ตัวแปร env ที่ถูกต้อง
+export const HOST = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:3005";
+export const SOCKET_HOST = process.env.NEXT_PUBLIC_SOCKET_HOST || HOST;
+
 
 export const AUTH_ROUTE = `/api/auth`;
 export const LOGIN_ROUTE = `${AUTH_ROUTE}/login`;

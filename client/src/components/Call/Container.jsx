@@ -25,33 +25,8 @@ function Container({ data }) {
     if (!data) return;
 
     if (isCaller && socket?.current) {
-      const onAccept = async ({ roomId }) => {
+      const onAccept = () => {
         setCallAccepted(true);
-
-        //  Sync stream อีกครั้งหลังฝั่งรับกด "Accept"
-        setTimeout(async () => {
-          try {
-            const zg = zgRef.current;
-            if (zg && roomId) {
-              const streams = await zg.getAllPlayStreamList(String(roomId));
-              for (const s of streams) {
-                const streamID = s.streamID;
-                if (!document.getElementById(streamID)) {
-                  const remoteEl = document.createElement(
-                    data.callType === "video" ? "video" : "audio"
-                  );
-                  remoteEl.id = streamID;
-                  remoteEl.autoplay = true;
-                  remoteEl.playsInline = true;
-                  remoteEl.muted = false;
-                  remoteBoxRef.current?.appendChild(remoteEl);
-                  const remoteStream = await zg.startPlayingStream(streamID);
-                  remoteEl.srcObject = remoteStream;
-                }
-              }
-            }
-          } catch {}
-        }, 1000);
       };
 
       socket.current.off("accept-call", onAccept);
@@ -116,11 +91,14 @@ function Container({ data }) {
             try {
               const remoteStream = await zg.startPlayingStream(streamID);
               remoteEl.srcObject = remoteStream;
-            } catch {}
+            } catch (err) {
+              console.error("ZEGO failed to play remote stream:", err);
+            }
           }
         }
 
         if (updateType === "DELETE" && streamList.length > 0) {
+          console.warn("ZEGO remote stream removed:", streamList);
           for (const s of streamList) {
             const streamID = s.streamID;
             zg.stopPlayingStream(streamID);
@@ -142,31 +120,10 @@ function Container({ data }) {
           },
           { userUpdate: true }
         );
-      } catch {
+      } catch (err) {
+        console.error("ZEGO room login failed:", err);
         return;
       }
-
-      //  Force sync stream list หลัง join (Edge-friendly)
-      setTimeout(async () => {
-        try {
-          const streams = await zg.getAllPlayStreamList(String(data.roomId));
-          for (const s of streams) {
-            const streamID = s.streamID;
-            if (!document.getElementById(streamID)) {
-              const remoteEl = document.createElement(
-                data.callType === "video" ? "video" : "audio"
-              );
-              remoteEl.id = streamID;
-              remoteEl.autoplay = true;
-              remoteEl.playsInline = true;
-              remoteEl.muted = false;
-              remoteBoxRef.current?.appendChild(remoteEl);
-              const remoteStream = await zg.startPlayingStream(streamID);
-              remoteEl.srcObject = remoteStream;
-            }
-          }
-        } catch {}
-      }, 900);
 
       //  สร้าง local stream
       try {
@@ -174,6 +131,11 @@ function Container({ data }) {
           camera: { audio: true, video: data.callType === "video" },
         });
         localStreamRef.current = localStream;
+        localStream.getTracks().forEach((track) => {
+          track.addEventListener("ended", () => {
+            console.error(`Local ${track.kind} track ended unexpectedly.`);
+          });
+        });
 
         const localEl = document.createElement(
           data.callType === "video" ? "video" : "audio"
@@ -189,7 +151,9 @@ function Container({ data }) {
         const streamID = `stream_${userInfo.id}_${Date.now()}`;
         publishStreamIdRef.current = streamID;
         await zg.startPublishingStream(streamID, localStream);
-      } catch {}
+      } catch (err) {
+        console.error("ZEGO camera/microphone creation or publishing failed:", err);
+      }
     };
 
     if (token) startCall();

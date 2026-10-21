@@ -10,7 +10,7 @@ console.log("🎥 incomingVideoCall object:", incomingVideoCall);
 
   //  รับสาย
   const acceptCall = () => {
-    if (!socket?.current || incomingVideoCall.from?.profilePicture || !incomingVideoCall) return;
+    if (!socket?.current || !incomingVideoCall) return;
     console.log(" [Receiver] รับสายวิดีโอจาก:", incomingVideoCall.id);
 
     // แจ้ง server ว่าผู้รับกดรับสาย

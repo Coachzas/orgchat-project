@@ -67,8 +67,13 @@ function Main() {
   //  เชื่อม socket.io
   useEffect(() => {
     if (userInfo && !socket.current) {
+       console.log("🌐 Connecting socket to:", SOCKET_HOST);
       socket.current = io(SOCKET_HOST, { withCredentials: true });
-      socket.current.emit("add-user", userInfo.id);
+      socket.current.on("connect", () => {
+     console.log("✅ Socket connected:", socket.current.id);
+     console.log("🧍‍♂️ ส่ง add-user ไปยัง server:", userInfo.id);
+     socket.current.emit("add-user", userInfo.id);
+   });
       dispatch({ type: reducerCases.SET_SOCKET, socket });
 
       // 🎯 role updated realtime
@@ -97,6 +102,25 @@ function Main() {
       };
     }
   }, [userInfo, dispatch]);
+
+  // ✅ ส่ง add-user หลังจากที่ socket connect และ userInfo พร้อมแน่ ๆ
+useEffect(() => {
+  if (!socket.current || !userInfo?.id) return;
+  const s = socket.current;
+
+  const handleConnect = () => {
+    console.log("🧍‍♂️ แจ้ง server ว่าผู้ใช้ online:", userInfo.id);
+    s.emit("add-user", userInfo.id);
+  };
+
+  // ถ้าเชื่อมต่อแล้ว → ส่งเลย
+  if (s.connected) handleConnect();
+  else s.on("connect", handleConnect);
+
+  return () => {
+    s.off("connect", handleConnect);
+  };
+}, [socket, userInfo]);
 
   // โหลดข้อความ 1v1
   useEffect(() => {

@@ -23,7 +23,7 @@ function CallContainer() {
       activeCall.callType === "voice" ? "outgoing-voice-call" : "outgoing-video-call";
 
     //  โทรออก
-    if (activeCall.type === "out-going") {
+    if (activeCall.type === "out-going" && !activeCall.callAccepted) {
       console.log("📤 [Caller] โทรออกไปยัง:", activeCall.id);
       socket.current.emit(eventType, {
         to: activeCall.id,

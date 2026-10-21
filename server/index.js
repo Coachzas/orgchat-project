@@ -20,17 +20,33 @@ import prisma from "./utils/PrismaClient.js";
 // โหลดค่าตัวแปรจาก .env
 dotenv.config();
 const app = express(); // สร้างแอป Express
+//  Route พื้นฐานสำหรับตรวจสอบว่าเซิร์ฟเวอร์ทำงานอยู่
+
+app.get("/", (req, res) => {
+  res.send(" OrgChat Server is running via ngrok!");
+});
+
 
 // 🔧 Middleware
 app.use(
   // ตั้งค่า CORS เพื่อให้ client (Next.js ที่ http://localhost:3000) ส่ง request + cookie มาได้
   cors({
-    origin: "http://localhost:3000",
+    origin: [
+      "http://localhost:3000",
+      "https://orgchat-client.ngrok.dev",
+    ],
     credentials: true,
   })
 );
+
+app.get("/health", (_req, res) => {
+  res.send("ok");
+});
+
 app.use(express.json()); // ให้ Express แปลง JSON body (req.body) ให้อัตโนมัติ
 app.use(cookieParser()); // ใช้ cookie-parser เพื่ออ่าน cookie จาก request (ใช้กับ session)
+
+app.set("trust proxy", 1); // ถ้าใช้ behind proxy (เช่น ngrok) ต้องตั้งค่านี้เพื่อให้ session cookie ทำงานถูกต้อง
 
 // 🔐 Session
 // ใช้ express-session จัดการ session ของผู้ใช้ เช่นเก็บ user ที่ล็อกอิน
@@ -40,13 +56,18 @@ app.use(
     resave: false,
     saveUninitialized: false,
     cookie: {
-      secure: false, // ถ้าใช้ https จริง ๆ ค่อยเปลี่ยนเป็น true
+      secure: process.env.NODE_ENV === "production",
       httpOnly: true,
-      sameSite: "lax",
+      sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
       maxAge: 1000 * 60 * 60 * 24, // อายุ session = 1 วัน (ms)
     },
   })
 );
+
+app.use((req, res, next) => {
+  console.log("[Session Debug]", req.session);
+  next();
+});
 
 // 🖼 Static Files
 // กำหนด path ให้ client เข้าถึงไฟล์ static ที่อัปโหลดได้ รูป, เสียง, ไฟล์, ไฟล์กลุ่ม 
@@ -72,7 +93,10 @@ const server = app.listen(PORT, () => {
 
 // 🔌 Socket.io Setup ผูก Socket.IO เข้ากับ HTTP server
 const io = new Server(server, {
-  cors: { origin: "http://localhost:3000", credentials: true },
+  cors: { origin: [
+      "http://localhost:3000",
+      "https://orgchat-client.ngrok.dev",
+    ], credentials: true },
 });
 
 app.set("io", io); // เก็บ io ไว้ใน app และเป็น global เผื่อใช้ใน controller อื่น ๆ
